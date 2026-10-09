@@ -6,7 +6,7 @@ import { getRedis } from "./redis";
 import { generateLetterId } from "./ids";
 import { toPlainText, hasExcessivelyLongWord, sanitizeSenderName } from "./sanitize";
 import { ApiError } from "./api";
-import { remainingTtlSeconds } from "./mailbox";
+import { keyTtlSeconds } from "./mailbox";
 import { DELIVER_BOTTLE_SCRIPT } from "./scripts";
 
 /**
@@ -83,18 +83,6 @@ export async function selectBottleCandidate(
 }
 
 /**
- * Backward-compatible wrapper returning recipient username string.
- */
-export async function selectBottleRecipient(
-  target: "anyone" | "male" | "female",
-  senderViewerHash: string,
-  senderUsernameLower?: string
-): Promise<string> {
-  const result = await selectBottleCandidate(target, senderViewerHash, senderUsernameLower);
-  return result.recipient;
-}
-
-/**
  * Sends an anonymous message in a bottle with atomic delivery and pair reservation (§COR-06, §COR-07).
  */
 export async function sendBottle(
@@ -130,7 +118,7 @@ export async function sendBottle(
     );
 
     const now = Date.now();
-    const remainingSeconds = remainingTtlSeconds(mailbox);
+    const remainingSeconds = keyTtlSeconds(mailbox);
     const letterId = generateLetterId();
 
     const letterRecord: LetterRecord = {
@@ -149,6 +137,9 @@ export async function sendBottle(
       reaction: null,
       published: false,
       senderName: input.isAnonymous ? null : (sanitizeSenderName(input.senderName ?? "", 40) || null),
+      // Bottles are always delivered immediately and never replies.
+      scheduledFor: null,
+      replyTo: null,
       version: 1,
     };
 

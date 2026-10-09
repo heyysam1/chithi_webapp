@@ -64,14 +64,48 @@ export function rateLimitHeaders(rl: {
 }
 
 /**
+ * Extracts the client IP from request headers using the trust-correct source.
+ *
+ * Proxies *append* the address they saw to `x-forwarded-for`, so the leftmost
+ * entry is client-controlled: an attacker can rotate it per request to mint a
+ * fresh rate-limit bucket every time. The safe entries are the ones the
+ * platform itself wrote. Trust order:
+ *
+ * 1. `x-real-ip` — the Vercel edge overwrites (never appends to) this header,
+ *    so on Vercel it carries the single authoritative client IP.
+ * 2. The LAST (rightmost) `x-forwarded-for` entry — appended by the proxy
+ *    closest to us (the platform edge). Anything to its left may be spoofed.
+ * 3. "unknown" — a self-hosted deployment without a trusted proxy cannot
+ *    authenticate the client IP at all; those callers share one bucket
+ *    (fail-closed, never a fresh identity per request).
+ */
+export function getClientIp(req: Request): string {
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) {
+    return realIp;
+  }
+
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const hops = forwarded
+      .split(",")
+      .map((hop) => hop.trim())
+      .filter((hop) => hop.length > 0);
+    const lastHop = hops[hops.length - 1];
+    if (lastHop) {
+      return lastHop;
+    }
+  }
+
+  return "unknown";
+}
+
+/**
  * Derives a privacy-preserving rate-limiting key from IP + IP_SALT.
  * Raw IP is never retained. Used exclusively for rate limiters.
  */
 export function getRateKey(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded
-    ? forwarded.split(",")[0]?.trim() ?? "unknown"
-    : req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req);
 
   return sha256(`${ip}:${env.IP_SALT}`).slice(0, 32);
 }
@@ -81,10 +115,7 @@ export function getRateKey(req: Request): string {
  * Raw IP is never retained. Used strictly for deduplication (reactions, flood guard, bottle pairing).
  */
 export function getViewerHash(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded
-    ? forwarded.split(",")[0]?.trim() ?? "unknown"
-    : req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req);
   const userAgent = req.headers.get("user-agent") ?? "unknown";
 
   return sha256(`${ip}:${userAgent}:${env.IP_SALT}`).slice(0, 32);
