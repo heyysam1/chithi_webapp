@@ -26,7 +26,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const showToast = useCallback(
     (message: string, type: ToastItem["type"] = "info") => {
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      setToasts((prev) => [...prev, { id, message, type }]);
+      // Cap concurrent toasts at 3; drop the oldest so bursts can't stack a wall.
+      setToasts((prev) => [...prev.slice(-2), { id, message, type }]);
 
       setTimeout(() => {
         removeToast(id);

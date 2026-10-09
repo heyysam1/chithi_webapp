@@ -61,9 +61,6 @@ export function ProfileStatsGrid({
           <span className="text-xs sm:text-sm font-medium text-ink dark:text-ink-heading mt-1 block group-hover:text-wax transition-colors">
             {t("profile.stats.unreadTitle")}
           </span>
-          <p className="text-[11px] text-ink-muted mt-0.5">
-            {t("profile.stats.unreadDesc")}
-          </p>
         </div>
       </div>
 
@@ -95,9 +92,6 @@ export function ProfileStatsGrid({
           <span className="text-xs sm:text-sm font-medium text-ink dark:text-ink-heading mt-1 block group-hover:text-wax transition-colors">
             {t("profile.stats.totalTitle")}
           </span>
-          <p className="text-[11px] text-ink-muted mt-0.5">
-            {t("profile.stats.totalDesc")}
-          </p>
         </div>
       </div>
 
@@ -116,9 +110,6 @@ export function ProfileStatsGrid({
           <span className="text-xs sm:text-sm font-medium text-ink dark:text-ink-heading mt-1 block">
             {t("profile.stats.bottleTitle")}
           </span>
-          <p className="text-[11px] text-ink-muted mt-0.5 leading-relaxed">
-            {t("profile.stats.bottleDesc")}
-          </p>
         </div>
       </div>
     </div>

@@ -7,27 +7,34 @@ import { PaperPicker } from "./PaperPicker";
 import { StampPicker } from "./StampPicker";
 import { FontPicker } from "./FontPicker";
 import { HintFields } from "./HintFields";
-import { AdvancedModePanel, AdvancedModeState } from "./AdvancedModePanel";
+import { AdvancedModePanel, AdvancedModeState, toLocalDateTimeInputValue } from "./AdvancedModePanel";
 import { LetterPreview } from "./LetterPreview";
 import { CharCounter } from "./CharCounter";
 import { Button } from "../ui/Button";
+import { Toggle } from "../ui/Toggle";
 import { PaperStyleId, StampId, FontId } from "@/lib/types";
 import { LETTER_BODY_MAX } from "@/lib/constants";
+import { countGraphemes } from "@/lib/sanitize";
 import { useToast } from "@/hooks/useToast";
 import { useLocale } from "@/hooks/useLocale";
 import { useSession } from "@/hooks/useSession";
-import { User, EyeOff, Mailbox } from "lucide-react";
+import { useLetterDraft } from "@/hooks/useLetterDraft";
+import { DraftBanner } from "./DraftBanner";
+import { User, EyeOff, Mailbox, Clock, X } from "lucide-react";
 
 export interface LetterComposerProps {
   recipientUsername?: string;
   isBottleMode?: boolean;
   mailboxExpiresAt?: number;
+  /** Letter ID (same recipient mailbox) this letter replies to. */
+  replyToId?: string;
 }
 
 export function LetterComposer({
   recipientUsername,
   isBottleMode = false,
   mailboxExpiresAt,
+  replyToId,
 }: LetterComposerProps) {
   const router = useRouter();
   const { locale, t } = useLocale();
@@ -37,6 +44,9 @@ export function LetterComposer({
   const [stamp, setStamp] = useState<StampId>("wax");
   const [font, setFont] = useState<FontId>("handwriting1");
   const [body, setBody] = useState("");
+  // Grapheme count is the single source of truth for length everywhere
+  // (CharCounter, inline counters, submit validation, and the server).
+  const graphemeCount = countGraphemes(body);
   const [hints, setHints] = useState<string[]>([""]);
   const [bottleTarget, setBottleTarget] = useState<"anyone" | "male" | "female">("anyone");
 
@@ -53,7 +63,68 @@ export function LetterComposer({
   const [isSending, setIsSending] = useState(false);
   const [isSelfSending, setIsSelfSending] = useState(false);
 
+  // Scheduled delivery (direct letters only)
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState<number | null>(null);
+
+  const handleScheduleChange = (isoStr: string) => {
+    if (!isoStr) {
+      setScheduledFor(null);
+      return;
+    }
+    setScheduledFor(new Date(isoStr).getTime());
+  };
+
   const { sessions, activeUsername } = useSession();
+
+  // Draft autosave (direct letters only) — restores unsent work after reloads.
+  const { draft, saveDraft, clearDraft, hasDraft } = useLetterDraft(
+    isBottleMode ? undefined : recipientUsername
+  );
+
+  useEffect(() => {
+    if (isBottleMode) return;
+    saveDraft({
+      body,
+      paper,
+      stamp,
+      font,
+      hints,
+      isAnonymous,
+      senderName,
+      mode: {
+        lockKind: advancedState.lockKind,
+        unlockAt: advancedState.unlockAt,
+        riddleQuestion: advancedState.riddleQuestion,
+        riddleAnswer: advancedState.riddleAnswer,
+        burnAfterReading: advancedState.burnAfterReading,
+      },
+    });
+  }, [body, paper, stamp, font, hints, isAnonymous, senderName, advancedState, isBottleMode, saveDraft]);
+
+  const handleRestoreDraft = () => {
+    if (!draft) return;
+    setBody(draft.body);
+    setPaper(draft.paper as PaperStyleId);
+    setStamp(draft.stamp as StampId);
+    setFont(draft.font as FontId);
+    setHints(draft.hints.length > 0 ? draft.hints : [""]);
+    setIsAnonymous(draft.isAnonymous);
+    setSenderName(draft.senderName);
+    setAdvancedState({
+      lockKind: draft.mode.lockKind,
+      unlockAt: draft.mode.unlockAt,
+      riddleQuestion: draft.mode.riddleQuestion,
+      riddleAnswer: draft.mode.riddleAnswer,
+      burnAfterReading: draft.mode.burnAfterReading,
+    });
+    showToast(t("draft.restored"), "success");
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    showToast(t("draft.discarded"), "success");
+  };
 
   // Self-letter detection guard (§3.1, §UI-01)
   useEffect(() => {
@@ -76,7 +147,7 @@ export function LetterComposer({
       return;
     }
 
-    if (body.length > LETTER_BODY_MAX) {
+    if (graphemeCount > LETTER_BODY_MAX) {
       showToast(t("errors.validation.bodyTooLong"), "warn");
       return;
     }
@@ -84,6 +155,16 @@ export function LetterComposer({
     if (!isAnonymous && !senderName.trim()) {
       showToast(t("composer.senderNameRequired"), "warn");
       return;
+    }
+
+    // Scheduled delivery validation (direct letters only)
+    let scheduledTs: number | undefined;
+    if (!isBottleMode && scheduleEnabled) {
+      if (!scheduledFor || scheduledFor <= Date.now() + 60_000) {
+        showToast(t("composer.scheduleTooSoon"), "warn");
+        return;
+      }
+      scheduledTs = scheduledFor;
     }
 
     setIsSending(true);
@@ -127,6 +208,7 @@ export function LetterComposer({
           return;
         }
 
+        clearDraft();
         router.push("/bottle?sent=true");
       } else {
         let modePayload:
@@ -167,6 +249,8 @@ export function LetterComposer({
             senderName: isAnonymous ? null : (senderName.trim() || null),
             isAnonymous,
             mode: modePayload,
+            scheduledFor: scheduledTs ?? null,
+            replyTo: replyToId || null,
           }),
         });
 
@@ -177,7 +261,12 @@ export function LetterComposer({
           return;
         }
 
-        router.push(`/${recipientUsername}/sent`);
+        clearDraft();
+        router.push(
+          `/${recipientUsername}/sent${
+            scheduledTs ? `?scheduled=${scheduledTs}` : ""
+          }`
+        );
       }
     } catch {
       showToast(t("errors.generic"), "error");
@@ -327,8 +416,75 @@ export function LetterComposer({
     </div>
   );
 
+  // Scheduled delivery (direct letters only) — follows the card language of
+  // AdvancedModePanel and the other composer cards.
+  const ScheduleCard = !isBottleMode ? (
+    <div className="p-5 border border-edge rounded-3xl bg-surface shadow-[0_12px_32px_-8px_rgba(70,48,32,0.08)] dark:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)] space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Clock size={16} className="text-wax" />
+          <span className="text-xs font-serif font-bold text-ink">
+            {t("composer.scheduleTitle")}
+          </span>
+        </div>
+        <Toggle checked={scheduleEnabled} onChange={setScheduleEnabled} />
+      </div>
+      {scheduleEnabled && (
+        <div className="space-y-2">
+          <input
+            type="datetime-local"
+            min={toLocalDateTimeInputValue(Date.now() + 5 * 60_000)}
+            max={
+              mailboxExpiresAt
+                ? toLocalDateTimeInputValue(mailboxExpiresAt)
+                : undefined
+            }
+            value={scheduledFor ? toLocalDateTimeInputValue(scheduledFor) : ""}
+            onChange={(e) => handleScheduleChange(e.target.value)}
+            className="w-full min-h-[44px] px-3.5 py-2 text-sm bg-canvas dark:bg-surface-raised text-ink dark:text-ink-heading rounded-xl border border-edge focus:outline-none focus:border-wax"
+          />
+          <p className="text-[11px] text-ink-muted leading-relaxed">
+            {t("composer.scheduleDesc")}
+          </p>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-40 overflow-x-hidden">
+      {/* Reply indicator — shown when composing a reply to an existing letter */}
+      {replyToId && !isBottleMode && recipientUsername && (
+        <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-peach/50 border border-peach-hover/50">
+          <span className="text-xs font-medium text-ink">
+            {t("composer.replyingTo")}
+          </span>
+          <Link
+            href={`/${recipientUsername}`}
+            aria-label={t("composer.cancelReply")}
+            className="text-ink-muted hover:text-ink transition-colors shrink-0"
+          >
+            <X size={16} />
+          </Link>
+        </div>
+      )}
+
+      {/* Unsent draft restore banner */}
+      {hasDraft && !body.trim() && draft && (
+        <div className="mb-4">
+          <DraftBanner
+            updatedAt={draft.updatedAt}
+            onRestore={handleRestoreDraft}
+            onDiscard={handleDiscardDraft}
+            labels={{
+              title: t("draft.title"),
+              restore: t("draft.restore"),
+              discard: t("draft.discard"),
+            }}
+          />
+        </div>
+      )}
+
       {/* DESKTOP & TABLET: 2-COLUMN BALANCED GRID (md: and lg:) */}
       <div className="hidden md:grid md:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Left Column (md:col-span-7 flex flex-col gap-4) - Letter Canvas & Letter-Specific Content */}
@@ -358,7 +514,7 @@ export function LetterComposer({
 
             <div className="flex items-center justify-between px-1 text-[11px] text-ink-muted italic">
               <span>{t("composer.urlWarning")}</span>
-              <span>{body.length > 0 ? `${body.length} / ${LETTER_BODY_MAX}` : ""}</span>
+              <span>{graphemeCount > 0 ? `${graphemeCount} / ${LETTER_BODY_MAX}` : ""}</span>
             </div>
           </div>
 
@@ -370,6 +526,9 @@ export function LetterComposer({
               mailboxExpiresAt={mailboxExpiresAt}
             />
           )}
+
+          {/* 3. Scheduled delivery (Direct letters only) */}
+          {ScheduleCard}
         </div>
 
         {/* Right Column (md:col-span-5 flex flex-col gap-4) - Customization, Identity & Delivery Settings */}
@@ -396,7 +555,11 @@ export function LetterComposer({
             className="w-full text-base py-4 rounded-full shadow-xl hover:shadow-amber-500/10 transition-all font-semibold cursor-pointer"
             isLoading={isSending}
           >
-            {isBottleMode ? t("bottle.sendButton") : t("composer.sendButton")}
+            {isBottleMode
+              ? t("bottle.sendButton")
+              : scheduleEnabled
+                ? t("composer.scheduleButton")
+                : t("composer.sendButton")}
           </Button>
         </div>
       </div>
@@ -428,7 +591,7 @@ export function LetterComposer({
 
           <div className="flex items-center justify-between px-1 text-[11px] text-ink-muted italic">
             <span>{t("composer.urlWarning")}</span>
-            <span>{body.length > 0 ? `${body.length} / ${LETTER_BODY_MAX}` : ""}</span>
+            <span>{graphemeCount > 0 ? `${graphemeCount} / ${LETTER_BODY_MAX}` : ""}</span>
           </div>
         </div>
 
@@ -453,6 +616,9 @@ export function LetterComposer({
           />
         )}
 
+        {/* 6b. Scheduled delivery (Direct letters only) */}
+        {ScheduleCard}
+
         {/* 7. Seal & Send Button (Mobile In-flow) */}
         <div className="pt-2">
           <Button
@@ -462,7 +628,11 @@ export function LetterComposer({
             className="w-full text-base py-3.5 rounded-full shadow-lg cursor-pointer"
             isLoading={isSending}
           >
-            {isBottleMode ? t("bottle.sendButton") : t("composer.sendButton")}
+            {isBottleMode
+              ? t("bottle.sendButton")
+              : scheduleEnabled
+                ? t("composer.scheduleButton")
+                : t("composer.sendButton")}
           </Button>
         </div>
       </div>

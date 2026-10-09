@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Textarea } from "../ui/Textarea";
@@ -28,6 +28,16 @@ export function ReportDialog({
   >("harassment");
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Clear any stale draft whenever the dialog opens for a (new) target, so a
+  // previous report's reason/note can never leak into the next report.
+  useEffect(() => {
+    if (isOpen) {
+      setReason("harassment");
+      setNote("");
+      setIsSubmitting(false);
+    }
+  }, [isOpen, targetId]);
 
   if (!isOpen || !targetId) return null;
 
