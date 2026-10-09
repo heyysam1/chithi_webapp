@@ -29,7 +29,7 @@ function RecoverForm() {
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   // After a successful recovery the server rotates the passcode (the old one
   // no longer works), so the new one must be shown before leaving this page.
-  const [recovered, setRecovered] = useState<{ username: string; recoveryPasscode: string } | null>(null);
+  const [recovered, setRecovered] = useState<{ username: string; recoveryPasscode: string; passcodeRotated: boolean } | null>(null);
 
   useEffect(() => {
     if (queryUsername && !username) {
@@ -118,6 +118,7 @@ function RecoverForm() {
         setRecovered({
           username: json.data.username,
           recoveryPasscode: json.data.recoveryPasscode,
+          passcodeRotated: json.data.passcodeRotated !== false,
         });
       } else {
         if (res.status === 429) {
@@ -161,14 +162,16 @@ function RecoverForm() {
               <h2 className="text-xl font-serif font-bold text-ink">
                 {t("recover.successTitle")}
               </h2>
-              <div className="text-left">
-                <CopyField
-                  value={recovered.recoveryPasscode}
-                  label={t("recover.newPasscodeTitle")}
-                  helperText={t("recover.newPasscodeDesc")}
-                  isSensitive
-                />
-              </div>
+              {recovered.passcodeRotated && (
+                <div className="text-left">
+                  <CopyField
+                    value={recovered.recoveryPasscode}
+                    label={t("recover.newPasscodeTitle")}
+                    helperText={t("recover.newPasscodeDesc")}
+                    isSensitive
+                  />
+                </div>
+              )}
               <Button
                 type="button"
                 variant="primary"
