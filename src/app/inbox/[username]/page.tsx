@@ -537,9 +537,6 @@ export default function InboxPage(props: {
             <span className="text-wax">@{username}</span>
             {t("inbox.title")}
           </h1>
-          <p className="text-xs text-ink-muted font-serif italic">
-            Confidential & Ephemeral
-          </p>
         </div>
 
         {/* Toolbar with Active Filter Tabs */}
