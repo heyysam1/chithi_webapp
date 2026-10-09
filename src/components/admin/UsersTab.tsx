@@ -5,6 +5,7 @@ import { Users, UserCheck, UserX, Crown } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { StatCard } from "./StatCard";
 import { BarChart } from "./BarChart";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   adminFetch,
   AdminApiError,
@@ -12,10 +13,9 @@ import {
   todayISO,
   type OverviewData,
   type SeriesData,
-  type MailboxListData,
+  type TopMailboxesData,
 } from "@/lib/adminApi";
 
-const TOP_LIMIT = 10;
 const GROWTH_DAYS = 30;
 
 /**
@@ -38,24 +38,17 @@ export function UsersTab() {
     setLoading(true);
     setError(null);
     try {
-      const [ov, series, list] = await Promise.all([
+      const [ov, series, topData] = await Promise.all([
         adminFetch<OverviewData>("/api/admin/overview"),
         adminFetch<SeriesData>(
           `/api/admin/series?metric=mailboxes_created&from=${daysAgoISO(GROWTH_DAYS)}&to=${todayISO()}`
         ),
-        adminFetch<MailboxListData>(`/api/admin/mailboxes?q=&limit=100`),
+        // Server-side top-10 ranking (correct past 100 mailboxes).
+        adminFetch<TopMailboxesData>("/api/admin/top-mailboxes"),
       ]);
       setOverview(ov);
       setGrowth(series);
-      const ranked = [...list.items]
-        .sort((a, b) => b.letterCount - a.letterCount)
-        .slice(0, TOP_LIMIT)
-        .map((m) => ({
-          username: m.username,
-          letterCount: m.letterCount,
-          isPermanent: m.isPermanent,
-        }));
-      setTop(ranked);
+      setTop(topData.items);
     } catch (e) {
       setError(
         e instanceof AdminApiError ? e.message : t("admin.users.loadError")
@@ -108,9 +101,14 @@ export function UsersTab() {
       )}
 
       {loading ? (
-        <p className="text-sm text-ink-muted text-center py-10">
-          {t("admin.users.loading")}
-        </p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[92px]" />
+            ))}
+          </div>
+          <Skeleton className="h-[200px] w-full" />
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

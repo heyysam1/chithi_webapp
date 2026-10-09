@@ -21,6 +21,8 @@ import {
   type MaintenanceData,
   type OverviewData,
   type SeriesData,
+  type BanInfo,
+  type BanListData,
 } from "@/lib/adminApi";
 
 const CSV_DAYS = 30;
@@ -52,6 +54,17 @@ export function SystemTab() {
   const [banTtl, setBanTtl] = useState<string>(TTL_OPTIONS[1].value);
   const [banReason, setBanReason] = useState("");
   const [banBusy, setBanBusy] = useState(false);
+  const [banConfirm, setBanConfirm] = useState<{
+    identifier: string;
+    kind: "ip" | "user";
+    ttlSeconds: number;
+    reason?: string;
+  } | null>(null);
+
+  // Ban list
+  const [bans, setBans] = useState<BanInfo[] | null>(null);
+  const [bansError, setBansError] = useState(false);
+  const [revokeBusy, setRevokeBusy] = useState<string | null>(null);
 
   // Report volume (honest label: reports, not "attacks")
   const [reportVolume, setReportVolume] = useState<number | null>(null);
@@ -81,6 +94,20 @@ export function SystemTab() {
     loadStatus();
   }, [loadStatus]);
 
+  const loadBans = useCallback(async () => {
+    try {
+      const data = await adminFetch<BanListData>("/api/admin/ban");
+      setBans(data.bans);
+      setBansError(false);
+    } catch {
+      setBansError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBans();
+  }, [loadBans]);
+
   const handleMaintenanceToggle = async () => {
     if (maintConfirm === null) return;
     setMaintBusy(true);
@@ -102,24 +129,36 @@ export function SystemTab() {
     }
   };
 
-  const handleBan = async (e: React.FormEvent) => {
+  const handleBan = (e: React.FormEvent) => {
     e.preventDefault();
     const identifier = banIdentifier.trim();
     if (!identifier) return;
+    // Confirmation first — a typo'd ban can lock someone out for 30 days.
+    setBanConfirm({
+      identifier,
+      kind: banKind,
+      ttlSeconds: parseInt(banTtl, 10),
+      reason: banReason.trim() || undefined,
+    });
+  };
+
+  const doBan = async () => {
+    if (!banConfirm) return;
     setBanBusy(true);
     try {
       await adminFetch("/api/admin/ban", {
         method: "POST",
         body: JSON.stringify({
-          identifier,
-          kind: banKind,
-          ttlSeconds: parseInt(banTtl, 10),
-          reason: banReason.trim() || undefined,
+          identifier: banConfirm.identifier,
+          kind: banConfirm.kind,
+          ttlSeconds: banConfirm.ttlSeconds,
+          reason: banConfirm.reason,
         }),
       });
       showToast(t("admin.system.banDone"), "success");
       setBanIdentifier("");
       setBanReason("");
+      loadBans();
     } catch (err) {
       showToast(
         err instanceof AdminApiError
@@ -129,7 +168,41 @@ export function SystemTab() {
       );
     } finally {
       setBanBusy(false);
+      setBanConfirm(null);
     }
+  };
+
+  const handleRevokeBan = async (key: string) => {
+    setRevokeBusy(key);
+    try {
+      await adminFetch("/api/admin/ban", {
+        method: "DELETE",
+        body: JSON.stringify({ key }),
+      });
+      showToast(t("admin.system.banRevoked"), "success");
+      loadBans();
+    } catch (err) {
+      showToast(
+        err instanceof AdminApiError
+          ? err.message
+          : t("admin.system.actionError"),
+        "error"
+      );
+    } finally {
+      setRevokeBusy(null);
+    }
+  };
+
+  const formatTtl = (ttlSeconds: number | null): string => {
+    if (ttlSeconds === null) return "—";
+    const h = Math.floor(ttlSeconds / 3600);
+    const m = Math.floor((ttlSeconds % 3600) / 60);
+    if (h >= 24) {
+      const d = Math.floor(h / 24);
+      return `${d}d ${h % 24}h`;
+    }
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
   };
 
   const handleDeleteLetter = async () => {
@@ -308,6 +381,57 @@ export function SystemTab() {
         <p className="text-[11px] text-ink-muted leading-relaxed">
           {t("admin.system.banNote")}
         </p>
+
+        {/* Active ban list with revoke */}
+        <div className="space-y-2 pt-1">
+          <h4 className="text-xs font-mono uppercase tracking-wider text-ink-muted">
+            {t("admin.system.banListTitle")}
+          </h4>
+          {bansError ? (
+            <p className="text-xs text-danger">
+              {t("admin.system.banListError")}
+            </p>
+          ) : bans === null ? (
+            <div className="h-10 rounded-2xl bg-canvas animate-pulse" />
+          ) : bans.length === 0 ? (
+            <p className="text-xs text-ink-muted">
+              {t("admin.system.banListEmpty")}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {bans.map((b) => (
+                <li
+                  key={b.key}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-canvas border border-edge"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-xs text-ink truncate">
+                      {b.identifier}
+                    </p>
+                    <p className="text-[11px] text-ink-muted mt-0.5">
+                      {b.kind === "ip"
+                        ? t("admin.system.banKindIp")
+                        : t("admin.system.banKindUser")}
+                      {" · "}
+                      {t("admin.system.banTtlLeft")}: {formatTtl(b.ttlSeconds)}
+                      {b.reason ? ` · ${b.reason}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    isLoading={revokeBusy === b.key}
+                    onClick={() => handleRevokeBan(b.key)}
+                    className="rounded-full shrink-0"
+                  >
+                    {t("admin.system.banRevoke")}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {/* Report volume (honest label — not "attacks") */}
@@ -380,6 +504,77 @@ export function SystemTab() {
           {t("admin.system.dangerHint")}
         </p>
       </div>
+
+      {/* Ban confirm modal */}
+      <Modal
+        isOpen={banConfirm !== null}
+        onClose={() => setBanConfirm(null)}
+        title={t("admin.system.banConfirmTitle")}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-5">
+          <p className="text-sm text-ink-muted leading-relaxed">
+            {t("admin.system.banConfirmDesc")}
+          </p>
+          {banConfirm && (
+            <dl className="p-4 rounded-2xl bg-canvas border border-edge space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">
+                  {t("admin.system.banIdentifier")}
+                </dt>
+                <dd className="font-mono text-ink break-all text-right">
+                  {banConfirm.identifier}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">{t("admin.system.banKind")}</dt>
+                <dd className="text-ink">
+                  {banConfirm.kind === "ip"
+                    ? t("admin.system.banKindIp")
+                    : t("admin.system.banKindUser")}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-ink-muted">{t("admin.system.banTtl")}</dt>
+                <dd className="text-ink">
+                  {formatTtl(banConfirm.ttlSeconds)}
+                </dd>
+              </div>
+              {banConfirm.reason && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-ink-muted">
+                    {t("admin.system.banReason")}
+                  </dt>
+                  <dd className="text-ink break-all text-right">
+                    {banConfirm.reason}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          )}
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => setBanConfirm(null)}
+              className="rounded-full"
+            >
+              {t("admin.system.cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              isLoading={banBusy}
+              onClick={doBan}
+              className="rounded-full"
+            >
+              {t("admin.system.banSubmit")}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Maintenance confirm modal */}
       <Modal
