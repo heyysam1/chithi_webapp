@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
 import { readPasscode } from "@/lib/passcodeStorage";
-import { Lock, Sparkles, Copy } from "lucide-react";
+import { Lock, Sparkles } from "lucide-react";
 
 export interface PasscodeInfoModalProps {
   isOpen: boolean;
@@ -72,10 +72,6 @@ export function PasscodeInfoModal({ isOpen, onClose, username }: PasscodeInfoMod
               </div>
               <div className="font-mono text-3xl font-bold tracking-[0.35em] text-ink pl-[0.35em]">
                 {passcode}
-              </div>
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-ink-muted">
-                <Copy size={12} />
-                <span>{t("profile.passcodeModal.tapToCopy")}</span>
               </div>
             </button>
           ) : (
