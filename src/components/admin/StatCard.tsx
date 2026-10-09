@@ -31,11 +31,11 @@ export function StatCard({ label, value, icon, sub, accent = false }: StatCardPr
           <div className="text-2xl font-serif font-bold text-ink leading-none truncate">
             {typeof value === "number" ? value.toLocaleString() : value}
           </div>
-          <div className="text-[11px] font-mono uppercase tracking-wider text-ink-muted mt-1 truncate">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-ink-muted mt-1 leading-tight">
             {label}
           </div>
           {sub && (
-            <div className="text-[11px] text-ink-muted mt-0.5 truncate">
+            <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
               {sub}
             </div>
           )}
