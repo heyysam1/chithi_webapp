@@ -78,19 +78,19 @@ export function ProfileHeaderCard({
         </div>
 
         {/* Redesigned Countdown Box with Explicit Dimensions */}
-        <div className="w-full sm:w-[300px] md:w-[320px] min-h-[100px] sm:min-h-[110px] flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl bg-black/40 border border-white/10 shadow-xl backdrop-blur-md self-center">
-          <div className="text-xs font-mono uppercase tracking-widest text-stone-400 flex items-center justify-center gap-1.5">
+        <div className="w-full sm:w-[300px] md:w-[320px] min-h-[100px] sm:min-h-[110px] flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl bg-peach/40 border border-wax/30 dark:bg-black/40 dark:border-white/10 shadow-xl backdrop-blur-md self-center">
+          <div className="text-xs font-mono uppercase tracking-widest text-ink-muted dark:text-stone-400 flex items-center justify-center gap-1.5">
             <Clock size={14} className="text-wax" />
             <span>{t("profile.timeLeft")}</span>
           </div>
-          <div className="text-2xl sm:text-3xl font-bold font-mono tracking-wider text-amber-200/95 leading-none my-1.5">
+          <div className="text-2xl sm:text-3xl font-bold font-mono tracking-wider text-wax-dim dark:text-amber-200/95 leading-none my-1.5">
             {countdown.isExpired ? (
               <span className="text-danger">{t("profile.statusExpired")}</span>
             ) : (
               countdown.formatted
             )}
           </div>
-          <div className="text-xs text-stone-400 flex items-center justify-center gap-1 mt-0.5">
+          <div className="text-xs text-ink-muted dark:text-stone-400 flex items-center justify-center gap-1 mt-0.5">
             <Sparkles size={11} className="text-wax" />
             <span>{t("profile.expiresIn")} {countdown.formatted}</span>
           </div>

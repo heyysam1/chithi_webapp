@@ -290,15 +290,15 @@ export default function HomePage() {
                 </div>
 
                 {/* Redesigned Countdown Box with Explicit Dimensions */}
-                <div className="w-full sm:w-[300px] md:w-[320px] min-h-[100px] sm:min-h-[110px] flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl bg-black/40 border border-white/10 shadow-xl backdrop-blur-md self-center">
-                  <div className="text-xs font-mono uppercase tracking-widest text-stone-400 flex items-center justify-center gap-1.5">
+                <div className="w-full sm:w-[300px] md:w-[320px] min-h-[100px] sm:min-h-[110px] flex flex-col items-center justify-center text-center p-4 sm:p-5 rounded-2xl bg-peach/40 border border-wax/30 dark:bg-black/40 dark:border-white/10 shadow-xl backdrop-blur-md self-center">
+                  <div className="text-xs font-mono uppercase tracking-widest text-ink-muted dark:text-stone-400 flex items-center justify-center gap-1.5">
                     <Clock size={14} className="text-wax" />
                     <span>{locale === "bn" ? "সময় বাকি:" : "TIME LEFT:"}</span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-bold font-mono tracking-wider text-amber-200/95 leading-none my-1.5">
+                  <div className="text-2xl sm:text-3xl font-bold font-mono tracking-wider text-wax-dim dark:text-amber-200/95 leading-none my-1.5">
                     {countdown.formatted || "..."}
                   </div>
-                  <div className="text-xs text-stone-400 flex items-center justify-center gap-1 mt-0.5">
+                  <div className="text-xs text-ink-muted dark:text-stone-400 flex items-center justify-center gap-1 mt-0.5">
                     <Sparkles size={11} className="text-wax" />
                     <span>{locale === "bn" ? "ডাকবাক্স সচল" : "Mailbox Active"}</span>
                   </div>
@@ -702,8 +702,8 @@ export default function HomePage() {
                             <KeyRound size={16} strokeWidth={1.5} className="text-wax" />
                             <span>
                               {locale === "bn"
-                                ? "আগের তৈরি করা ইনবক্স আছে? [পাসকোড দিয়ে লগইন করুন]"
-                                : "Already have a mailbox? [Login with Passcode]"}
+                                ? "আগের তৈরি করা ইনবক্স আছে? পাসকোড দিয়ে লগইন করুন]"
+                                : "Already have a mailbox? Login with Passcode"}
                             </span>
                           </Link>
                         </div>

@@ -61,7 +61,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="bg-canvas text-ink antialiased min-h-screen relative selection:bg-peach selection:text-ink transition-colors duration-200">
+      <body className="bg-canvas text-ink antialiased min-h-screen relative selection:bg-peach selection:text-ink dark:selection:text-[hsl(22_24%_18%)] transition-colors duration-200">
         <ThemeProvider>
           <LocaleProvider initialLocale={initialLocale}>
             <SessionProvider>
