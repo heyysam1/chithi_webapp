@@ -167,7 +167,7 @@ export function AreaChart({
                 x={geom.padL - 6}
                 y={y + 4}
                 textAnchor="end"
-                fontSize={10}
+                fontSize={12}
                 className="fill-ink-muted"
               >
                 {tv}
@@ -202,8 +202,8 @@ export function AreaChart({
               key={`${p.date}-${i}`}
               x={geom.pts[i]!.x}
               y={height - 10}
-              textAnchor="middle"
-              fontSize={10}
+              textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}
+              fontSize={12}
               className="fill-ink-muted"
             >
               {p.date.slice(5)}

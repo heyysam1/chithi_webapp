@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { apiOk, apiErr } from "@/lib/api";
-import { ALL_METRICS, getMetricSeries } from "@/lib/metrics";
+import {
+  ALL_METRICS,
+  getMetricSeries,
+  getUniqueVisitorSeries,
+} from "@/lib/metrics";
 import { guardAdmin } from "../_auth";
 
 export const runtime = "nodejs";
@@ -8,6 +12,9 @@ export const dynamic = "force-dynamic";
 
 const MAX_RANGE_DAYS = 400;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** HyperLogLog-backed unique-visitor series (not a plain counter). */
+const UNIQUE_VISITORS_METRIC = "unique_visitors";
 
 function parseDate(s: string | null): number | null {
   if (!s || !DATE_RE.test(s)) return null;
@@ -29,7 +36,10 @@ export async function GET(req: NextRequest) {
     const fromParam = url.searchParams.get("from");
     const toParam = url.searchParams.get("to");
 
-    if (!ALL_METRICS.includes(metric as (typeof ALL_METRICS)[number])) {
+    if (
+      metric !== UNIQUE_VISITORS_METRIC &&
+      !ALL_METRICS.includes(metric as (typeof ALL_METRICS)[number])
+    ) {
       return apiErr("VALIDATION_FAILED", "errors.generic", 400, {
         metric: ["unknown metric"],
       });
@@ -58,7 +68,10 @@ export async function GET(req: NextRequest) {
       clamped = true;
     }
 
-    const points = await getMetricSeries(metric, fromStr, toDateStr(to));
+    const points =
+      metric === UNIQUE_VISITORS_METRIC
+        ? await getUniqueVisitorSeries(fromStr, toDateStr(to))
+        : await getMetricSeries(metric, fromStr, toDateStr(to));
 
     return apiOk({ metric, from: fromStr, to: toDateStr(to), clamped, points });
   } catch {

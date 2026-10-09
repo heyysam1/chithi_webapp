@@ -43,7 +43,6 @@ export function OverviewTab() {
 
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [ovError, setOvError] = useState<string | null>(null);
-  const [visitsToday, setVisitsToday] = useState<number | null>(null);
 
   const [metric, setMetric] = useState<string>("letters_sent");
   const [period, setPeriod] = useState<Period>("7d");
@@ -53,7 +52,7 @@ export function OverviewTab() {
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
 
-  // Overview stats on mount.
+  // Overview stats on mount (traffic incl. unique visitors is part of it).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -63,16 +62,6 @@ export function OverviewTab() {
       } catch (e) {
         if (!cancelled)
           setOvError(e instanceof Error ? e.message : "Failed to load");
-      }
-      // Visits today comes from the series endpoint (not in overview).
-      try {
-        const today = todayISO();
-        const s = await adminFetch<SeriesData>(
-          `/api/admin/series?metric=visits&from=${today}&to=${today}`
-        );
-        if (!cancelled) setVisitsToday(s.points[0]?.value ?? 0);
-      } catch {
-        if (!cancelled) setVisitsToday(0);
       }
     })();
     return () => {
@@ -117,7 +106,7 @@ export function OverviewTab() {
         </p>
       ) : !overview ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-[92px]" />
           ))}
         </div>
@@ -132,11 +121,6 @@ export function OverviewTab() {
             label={t("admin.overview.statLettersTotal")}
             value={overview.letters.total}
             icon={<Mail size={18} strokeWidth={1.5} />}
-          />
-          <StatCard
-            label={t("admin.overview.statVisitsToday")}
-            value={visitsToday ?? "—"}
-            icon={<Eye size={18} strokeWidth={1.5} />}
           />
           <StatCard
             label={t("admin.overview.statBottlesPool")}
@@ -166,20 +150,43 @@ export function OverviewTab() {
         </div>
       )}
 
+      {/* Traffic: unique visitors vs page views */}
+      {overview && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-edge shadow-sm space-y-4">
+          <h3 className="text-base font-serif font-bold text-ink">
+            {t("admin.overview.traffic")}
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              label={t("admin.overview.uniqueVisitors")}
+              value={overview.traffic.uniqueVisitorsToday}
+              sub={`${overview.traffic.uniqueVisitorsWeek.toLocaleString()} · ${t("admin.overview.last7days")}`}
+              icon={<Users size={18} strokeWidth={1.5} />}
+            />
+            <StatCard
+              label={t("admin.overview.pageViews")}
+              value={overview.traffic.visitsToday}
+              sub={`${overview.traffic.visitsWeek.toLocaleString()} · ${t("admin.overview.last7days")}`}
+              icon={<Eye size={18} strokeWidth={1.5} />}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Activity chart */}
       <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-edge shadow-sm space-y-4">
         <div className="flex flex-wrap items-end gap-3">
-          <h3 className="text-base font-serif font-bold text-ink mr-auto">
+          <h3 className="text-base font-serif font-bold text-ink mr-auto max-sm:basis-full max-sm:mr-0">
             {t("admin.overview.activityTitle")}
           </h3>
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 max-sm:flex-1 max-sm:min-w-0">
             <span className="text-[11px] font-mono uppercase tracking-wider text-ink-muted">
               {t("admin.overview.metricLabel")}
             </span>
             <Select
               value={metric}
               onChange={(e) => setMetric(e.target.value)}
-              className="!w-44"
+              className="!w-full sm:!w-44"
             >
               {ACTIVITY_METRICS.map((m) => (
                 <option key={m} value={m}>
@@ -188,14 +195,14 @@ export function OverviewTab() {
               ))}
             </Select>
           </label>
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 max-sm:flex-1 max-sm:min-w-0">
             <span className="text-[11px] font-mono uppercase tracking-wider text-ink-muted">
               {t("admin.overview.periodLabel")}
             </span>
             <Select
               value={period}
               onChange={(e) => setPeriod(e.target.value as Period)}
-              className="!w-36"
+              className="!w-full sm:!w-36"
             >
               <option value="7d">{t("admin.overview.period7d")}</option>
               <option value="30d">{t("admin.overview.period30d")}</option>
@@ -240,9 +247,17 @@ export function OverviewTab() {
             {chartError}
           </p>
         ) : chartLoading ? (
-          <Skeleton className="h-[220px] w-full" />
+          <Skeleton className="h-[260px] w-full" />
         ) : (
-          <AreaChart points={points} emptyLabel={t("admin.overview.noData")} />
+          <div className="overflow-x-auto">
+            <div className="min-w-[600px]">
+              <AreaChart
+                points={points}
+                height={260}
+                emptyLabel={t("admin.overview.noData")}
+              />
+            </div>
+          </div>
         )}
       </div>
 

@@ -415,9 +415,9 @@ export default function HomePage() {
           <section className="pt-6 md:pt-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start relative">
             {/* Left: Modern, Charming Hero Section with Paper-cut / Scrapbook elements */}
             <div className="lg:col-span-6 space-y-6 relative">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center items-start gap-3">
                 <AirmailTape label="PAR AVION" sublabel="বিমান ডাক · CHITHI" rotation={-3} />
-                <Badge variant="buttercup" className="whitespace-nowrap text-[10px] sm:text-[11px]">
+                <Badge variant="buttercup" className="whitespace-nowrap text-[10px] sm:text-[11px] max-w-full">
                   {t("home.badge")}
                 </Badge>
               </div>

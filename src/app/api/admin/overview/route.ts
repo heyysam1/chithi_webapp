@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { apiOk, apiErr } from "@/lib/api";
 import { getRedis, type RedisLike } from "@/lib/redis";
 import { keys } from "@/lib/keys";
+import { todayStr } from "@/lib/metrics";
 import { guardAdmin } from "../_auth";
 
 export const runtime = "nodejs";
@@ -125,6 +126,34 @@ export async function GET(req: NextRequest) {
     const bottlesTotal = poolAny + poolMale + poolFemale + poolOther;
     const total = recordKeys.length;
 
+    // Traffic: today's page views (counter) and unique visitors (HLL sketch),
+    // plus 7-day totals. Unique-visitor week total uses a single PFCOUNT over
+    // all 7 daily sketches (true union) instead of summing daily estimates.
+    // Missing keys read as 0 — unique counting starts at deploy day.
+    const today = todayStr();
+    const todayUtc = Date.parse(`${today}T00:00:00Z`);
+    const weekDays: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      weekDays.push(new Date(todayUtc - i * 86_400_000).toISOString().slice(0, 10));
+    }
+    const [visitsTodayRaw, uniqueVisitorsToday, visitsWeekVals, uniqueVisitorsWeek] =
+      await Promise.all([
+        redis
+          .get(keys.metricDay("visits", today))
+          .then((v) => Number(v) || 0)
+          .catch(() => 0),
+        redis.pfcount(keys.uniqueVisitorsDay(today)).catch(() => 0),
+        redis
+          .mget(...weekDays.map((d) => keys.metricDay("visits", d)))
+          .then((vals: unknown[]) =>
+            vals.reduce((s: number, v: unknown) => s + (Number(v) || 0), 0)
+          )
+          .catch(() => 0),
+        redis
+          .pfcount(...weekDays.map((d) => keys.uniqueVisitorsDay(d)))
+          .catch(() => 0),
+      ]);
+
     return apiOk({
       mailboxes: {
         total,
@@ -141,6 +170,12 @@ export async function GET(req: NextRequest) {
       storage: { keys: storageKeys },
       reports: { pending: reportScan.keys.length, truncated: reportScan.truncated },
       sessions: { active: sessionsActive, truncated: mbScan.truncated },
+      traffic: {
+        visitsToday: visitsTodayRaw,
+        uniqueVisitorsToday,
+        visitsWeek: visitsWeekVals,
+        uniqueVisitorsWeek,
+      },
     });
   } catch {
     return apiErr("INTERNAL", "errors.generic", 500);

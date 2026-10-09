@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/hooks/useLocale";
+import { DEVELOPER_PHOTO_SRC } from "@/lib/developerPhoto";
 
 export default function AboutPage() {
   const { t } = useLocale();
@@ -71,6 +72,26 @@ export default function AboutPage() {
             <Button variant="outline" size="lg" className="w-full">
               Explore Benami Kham
             </Button>
+          </Link>
+        </div>
+
+        {/* Developer credit — intentionally small and understated */}
+        <div className="pt-6 border-t border-edge flex justify-center">
+          <Link
+            href="/developer"
+            className="flex items-center gap-2.5 text-ink-muted hover:text-ink transition-colors"
+          >
+            <img
+              src={DEVELOPER_PHOTO_SRC}
+              alt="Mohammed Sami"
+              width={32}
+              height={32}
+              className="w-8 h-8 rounded-full object-cover border border-edge"
+            />
+            <span className="text-xs font-medium">Mohammed Sami</span>
+            <span aria-hidden="true" className="text-xs">
+              →
+            </span>
           </Link>
         </div>
       </div>
