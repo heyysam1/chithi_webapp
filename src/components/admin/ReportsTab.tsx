@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Flag, Check, Trash2, RefreshCw, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -111,9 +112,11 @@ export function ReportsTab() {
       )}
 
       {loading ? (
-        <p className="text-sm text-ink-muted text-center py-10">
-          {t("admin.reports.loading")}
-        </p>
+        <ul className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[120px] w-full" />
+          ))}
+        </ul>
       ) : reports.length === 0 ? (
         <div className="p-10 rounded-3xl bg-surface border border-edge text-center">
           <Inbox size={28} className="mx-auto text-ink-muted" strokeWidth={1.5} />

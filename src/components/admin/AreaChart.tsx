@@ -47,7 +47,7 @@ export function AreaChart({
   emptyLabel,
   accent = "wax",
 }: AreaChartProps) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const gradId = useId().replace(/[^a-zA-Z0-9]/g, "");
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<number | null>(null);
@@ -95,6 +95,21 @@ export function AreaChart({
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect || rect.width === 0) return;
     const svgX = ((e.clientX - rect.left) / rect.width) * W;
+    setHover(nearestIndex(svgX));
+  };
+
+  // Touch support (M-15): phones have no hover, so mirror the
+  // mouse behavior for touch drag/tap.
+  const handleTouch = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return;
+    const svgX = ((touch.clientX - rect.left) / rect.width) * W;
+    setHover(nearestIndex(svgX));
+  };
+
+  const nearestIndex = (svgX: number): number => {
     let best = 0;
     let bestDist = Infinity;
     geom.pts.forEach((p, i) => {
@@ -104,7 +119,7 @@ export function AreaChart({
         best = i;
       }
     });
-    setHover(best);
+    return best;
   };
 
   if (isEmpty) {
@@ -131,9 +146,12 @@ export function AreaChart({
         className="w-full cursor-crosshair"
         style={{ height }}
         role="img"
-        aria-label="Area chart"
+        aria-label={t("chart.activity")}
         onMouseMove={handleMove}
         onMouseLeave={() => setHover(null)}
+        onTouchStart={handleTouch}
+        onTouchMove={handleTouch}
+        onTouchEnd={() => setHover(null)}
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">

@@ -34,6 +34,7 @@ function GroupedBarChart({
   sentLabel: string;
   claimedLabel: string;
 }) {
+  const { t } = useLocale();
   const allZero = dates.every(
     (d) => (sent.get(d) ?? 0) === 0 && (claimed.get(d) ?? 0) === 0
   );
@@ -77,7 +78,7 @@ function GroupedBarChart({
         className="w-full"
         style={{ height }}
         role="img"
-        aria-label="Sent vs claimed bottles"
+        aria-label={t("admin.bottles.filter")}
       >
         {ticks.map((tv, i) => {
           const y = padT + innerH - (tv / max) * innerH;
@@ -274,15 +275,13 @@ export function BottlesTab() {
         />
       </div>
 
-      {/* Anonymous letters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <StatCard
-          label={t("admin.bottles.anonTitle")}
-          value={anonTotal ?? "—"}
-          sub={t("admin.bottles.anonSub")}
-          icon={<MailQuestion size={18} strokeWidth={1.5} />}
-        />
-      </div>
+      {/* Anonymous letters — full width, not dangling at half width */}
+      <StatCard
+        label={t("admin.bottles.anonTitle")}
+        value={anonTotal ?? "—"}
+        sub={t("admin.bottles.anonSub")}
+        icon={<MailQuestion size={18} strokeWidth={1.5} />}
+      />
     </div>
   );
 }

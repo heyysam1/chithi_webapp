@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
-import { adminFetch } from "@/lib/adminApi";
+import { adminFetch, AdminApiError } from "@/lib/adminApi";
 
 export type MailboxesTabProps = Record<string, never>;
 
@@ -92,7 +92,12 @@ export function MailboxesTab() {
       `/api/admin/mailboxes?q=${encodeURIComponent(query)}&limit=20`
     )
       .then((d) => setItems(Array.isArray(d.items) ? d.items : []))
-      .catch(() => {});
+      .catch((e) =>
+        showToast(
+          e instanceof AdminApiError ? e.message : t("admin.mailboxes.loadError"),
+          "error"
+        )
+      );
   };
 
   const openDetail = (username: string) => {
@@ -207,7 +212,16 @@ export function MailboxesTab() {
                     <tr
                       key={m.username}
                       onClick={() => openDetail(m.username)}
-                      className="border-b border-edge/60 last:border-0 cursor-pointer hover:bg-peach/20 dark:hover:bg-white/5 transition-colors"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openDetail(m.username);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`@${m.username}`}
+                      className="border-b border-edge/60 last:border-0 cursor-pointer hover:bg-peach/20 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:bg-peach/20"
                     >
                       <td className="px-4 py-3">
                         <span className="font-mono font-medium text-ink">@{m.username}</span>

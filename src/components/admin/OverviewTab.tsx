@@ -142,36 +142,48 @@ export function OverviewTab() {
             value={overview.feed.total}
             icon={<Newspaper size={18} strokeWidth={1.5} />}
           />
-          <StatCard
-            label={t("admin.overview.statActiveSessions")}
-            value={overview.sessions.active}
-            icon={<Activity size={18} strokeWidth={1.5} />}
-          />
-        </div>
-      )}
-
-      {/* Traffic: unique visitors vs page views */}
-      {overview && (
-        <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-edge shadow-sm space-y-4">
-          <h3 className="text-base font-serif font-bold text-ink">
-            {t("admin.overview.traffic")}
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
+          {/* 7th card spans full width on mobile so it doesn't dangle at half width */}
+          <div className="col-span-2 lg:col-span-1">
             <StatCard
-              label={t("admin.overview.uniqueVisitors")}
-              value={overview.traffic.uniqueVisitorsToday}
-              sub={`${overview.traffic.uniqueVisitorsWeek.toLocaleString()} · ${t("admin.overview.last7days")}`}
-              icon={<Users size={18} strokeWidth={1.5} />}
-            />
-            <StatCard
-              label={t("admin.overview.pageViews")}
-              value={overview.traffic.visitsToday}
-              sub={`${overview.traffic.visitsWeek.toLocaleString()} · ${t("admin.overview.last7days")}`}
-              icon={<Eye size={18} strokeWidth={1.5} />}
+              label={t("admin.overview.statActiveSessions")}
+              value={overview.sessions.active}
+              icon={<Activity size={18} strokeWidth={1.5} />}
             />
           </div>
         </div>
       )}
+
+      {/* Traffic: unique visitors vs page views */}
+      {overview &&
+        (() => {
+          const traffic = overview.traffic ?? {
+            uniqueVisitorsToday: 0,
+            visitsToday: 0,
+            uniqueVisitorsWeek: 0,
+            visitsWeek: 0,
+          };
+          return (
+            <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-edge shadow-sm space-y-4">
+              <h3 className="text-base font-serif font-bold text-ink">
+                {t("admin.overview.traffic")}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard
+                  label={t("admin.overview.uniqueVisitors")}
+                  value={traffic.uniqueVisitorsToday}
+                  sub={`${traffic.uniqueVisitorsWeek.toLocaleString()} · ${t("admin.overview.last7days")}`}
+                  icon={<Users size={18} strokeWidth={1.5} />}
+                />
+                <StatCard
+                  label={t("admin.overview.pageViews")}
+                  value={traffic.visitsToday}
+                  sub={`${traffic.visitsWeek.toLocaleString()} · ${t("admin.overview.last7days")}`}
+                  icon={<Eye size={18} strokeWidth={1.5} />}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Activity chart */}
       <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-edge shadow-sm space-y-4">

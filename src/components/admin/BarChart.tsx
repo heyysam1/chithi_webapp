@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { SeriesPoint } from "@/lib/adminApi";
+import { useLocale } from "@/hooks/useLocale";
 
 /**
  * Hand-rolled SVG bar chart — no extra dependencies.
@@ -18,6 +19,7 @@ export function BarChart({
   height?: number;
   emptyLabel: string;
 }) {
+  const { t } = useLocale();
   if (points.length === 0) {
     return (
       <p className="text-sm text-ink-muted text-center py-10">{emptyLabel}</p>
@@ -49,7 +51,7 @@ export function BarChart({
       className="w-full"
       style={{ height }}
       role="img"
-      aria-label="Bar chart"
+      aria-label={t("chart.bars")}
     >
       {ticks.map((tv, i) => {
         const y = padT + innerH - (tv / max) * innerH;

@@ -64,12 +64,14 @@ function rangeFor(period: Period, customFrom: string, customTo: string): { from:
 
 /** Self-contained mini bar chart (no external deps, theme-aware). */
 function MiniBars({ points }: { points: SeriesPoint[] }) {
+  const { t } = useLocale();
   const max = Math.max(1, ...points.map((p) => p.value));
-  if (points.length === 0) {
+  const total = points.reduce((s, p) => s + (p.value || 0), 0);
+  if (points.length === 0 || total === 0) {
     return <div className="h-16 flex items-center justify-center text-xs text-ink-muted">—</div>;
   }
   return (
-    <div className="flex items-end gap-1 h-16" role="img" aria-label="Usage over time">
+    <div className="flex items-end gap-1 h-16" role="img" aria-label={t("admin.features.filter")}>
       {points.map((p) => (
         <div
           key={p.date}
@@ -94,6 +96,7 @@ export function FeaturesTab() {
   const [customTo, setCustomTo] = useState(() => isoDate(new Date()));
 
   const [series, setSeries] = useState<Record<string, SeriesPoint[]>>({});
+  const [failed, setFailed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,18 +107,30 @@ export function FeaturesTab() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setFailed({});
     Promise.all(
       FEATURES.map((f) =>
         adminFetch<{ points: SeriesPoint[] }>(
           `/api/admin/series?metric=${encodeURIComponent(f.metric)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
         )
-          .then((d: { points: SeriesPoint[] }) => [f.metric, Array.isArray(d.points) ? d.points : []] as const)
-          .catch(() => [f.metric, []] as const)
+          .then((d: { points: SeriesPoint[] }) => ({
+            metric: f.metric,
+            points: Array.isArray(d.points) ? d.points : [],
+            ok: true,
+          }))
+          .catch(() => ({ metric: f.metric, points: [], ok: false }))
       )
     )
-      .then((entries) => {
+      .then((results) => {
         if (!cancelled) {
-          setSeries(Object.fromEntries(entries));
+          const next: Record<string, SeriesPoint[]> = {};
+          const failedMap: Record<string, boolean> = {};
+          for (const r of results) {
+            next[r.metric] = r.points;
+            if (!r.ok) failedMap[r.metric] = true;
+          }
+          setSeries(next);
+          setFailed(failedMap);
         }
       })
       .catch((e: Error) => {
@@ -194,9 +209,13 @@ export function FeaturesTab() {
                 </div>
                 <span className="font-mono text-xl font-bold text-ink">{total}</span>
               </div>
-              {loading && points.length === 0 ? (
+              {loading && points.length === 0 && !failed[metric] ? (
                 <div className="h-16 flex items-center justify-center text-ink-muted">
                   <Loader2 size={16} className="animate-spin" />
+                </div>
+              ) : failed[metric] ? (
+                <div className="h-16 flex items-center justify-center text-xs text-danger px-2 text-center">
+                  {t("admin.features.loadError")}
                 </div>
               ) : (
                 <MiniBars points={points} />

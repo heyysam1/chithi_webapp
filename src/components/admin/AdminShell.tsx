@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   Flag,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Mail,
   Package,
@@ -52,7 +53,7 @@ export interface AdminShellProps {
   /** Admin username from the login response. */
   username: string;
   /** Called when the logout button is pressed. */
-  onLogout: () => void;
+  onLogout: () => void | Promise<void>;
   /** Tab definitions in any order; AdminShell renders them in ADMIN_TAB_ORDER. */
   tabs: AdminTab[];
 }
@@ -70,11 +71,21 @@ const TAB_ICONS: Record<AdminTabId, React.ReactNode> = {
 export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
   const { t } = useLocale();
   const [activeTab, setActiveTab] = useState<AdminTabId>("overview");
+  const [logoutBusy, setLogoutBusy] = useState(false);
+
+  const handleLogoutClick = async () => {
+    if (logoutBusy) return;
+    setLogoutBusy(true);
+    try {
+      await onLogout();
+    } finally {
+      setLogoutBusy(false);
+    }
+  };
 
   const byId = new Map<AdminTabId, React.ReactNode>(
     tabs.map((tab) => [tab.id, tab.content])
   );
-  const activeContent = byId.get(activeTab);
   const visibleTabs = ADMIN_TAB_ORDER.filter((id) => byId.has(id));
 
   const navItemClass = (isActive: boolean) =>
@@ -102,7 +113,7 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
           </div>
         </div>
 
-        <nav aria-label={t("admin.shell.navLabel")} className="mt-8 space-y-1 flex-1">
+        <nav aria-label={t("admin.shell.navLabel")} className="mt-8 space-y-1 flex-1 overflow-y-auto min-h-0">
           {visibleTabs.map((id) => {
             const isActive = id === activeTab;
             return (
@@ -126,7 +137,9 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={onLogout}
+          onClick={handleLogoutClick}
+          disabled={logoutBusy}
+          isLoading={logoutBusy}
           className="justify-start gap-3 px-3.5 cursor-pointer"
         >
           <LogOut size={17} strokeWidth={1.5} />
@@ -145,11 +158,16 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
           </p>
           <button
             type="button"
-            onClick={onLogout}
+            onClick={handleLogoutClick}
+            disabled={logoutBusy}
             aria-label={t("admin.shell.logout")}
-            className="w-9 h-9 rounded-xl border border-edge text-ink-muted hover:text-ink flex items-center justify-center cursor-pointer"
+            className="w-9 h-9 rounded-xl border border-edge text-ink-muted hover:text-ink flex items-center justify-center cursor-pointer disabled:opacity-60"
           >
-            <LogOut size={16} strokeWidth={1.5} />
+            {logoutBusy ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <LogOut size={16} strokeWidth={1.5} />
+            )}
           </button>
         </div>
         <nav
@@ -178,11 +196,16 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
         </nav>
       </div>
 
-      {/* Content */}
+      {/* Content — all tabs stay mounted; only the active one is visible.
+          This avoids refetching + skeleton flashes on every tab switch. */}
       <div className="flex-1 min-w-0">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-          <main key={activeTab} className="animate-fadeIn">
-            {activeContent}
+          <main className="animate-fadeIn">
+            {visibleTabs.map((id) => (
+              <div key={id} hidden={id !== activeTab}>
+                {byId.get(id)}
+              </div>
+            ))}
           </main>
         </div>
       </div>
