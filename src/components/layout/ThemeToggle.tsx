@@ -14,7 +14,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-11 h-11 rounded-full border border-edge bg-surface opacity-50" />
+      <div className="w-9 h-9 rounded-full border border-edge bg-surface opacity-50" />
     );
   }
 
@@ -26,7 +26,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to Day Mode" : "Switch to Dark Mode"}
       title={isDark ? "Switch to Day Mode" : "Switch to Dark Mode"}
-      className="relative w-11 h-11 rounded-full border border-edge bg-surface hover:bg-peach/40 dark:hover:bg-surface-raised text-ink dark:text-peach flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-wax"
+      className="relative w-9 h-9 rounded-full border border-edge bg-surface hover:bg-peach/40 dark:hover:bg-surface-raised text-ink dark:text-peach flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-wax"
     >
       {isDark ? (
         <Sun size={15} className="text-peach transition-transform duration-300 rotate-0 hover:rotate-45" />

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useRef, use } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
-import { CountdownBanner } from "@/components/inbox/CountdownBanner";
 import { InboxToolbar } from "@/components/inbox/InboxToolbar";
 import { EnvelopeCard } from "@/components/envelope/EnvelopeCard";
 import { EnvelopeOpenAnimation } from "@/components/envelope/EnvelopeOpenAnimation";
@@ -573,14 +572,6 @@ export default function InboxPage(props: {
   return (
     <PageShell>
       <div className="space-y-6 pb-36 sm:pb-44">
-        {/* Sticky Countdown Banner (§11.5) */}
-        {mailboxMeta && (
-          <CountdownBanner
-            expiresAt={mailboxMeta.expiresAt}
-            onExpired={() => setIsFaded(true)}
-          />
-        )}
-
         {/* Incoming Letter Notification Opt-in Banner (§4.1) */}
         {isSupported && !isGranted && permission !== "denied" && (
           <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-peach/50 dark:bg-surface border border-gold/40 dark:border-edge shadow-sm">

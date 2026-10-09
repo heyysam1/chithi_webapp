@@ -22,7 +22,7 @@ export function Header() {
   // framer-motion does not ship in the global layout bundle.
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-canvas/90 backdrop-blur-md border-b border-edge transition-colors duration-200">
+    <header className="relative z-40 w-full bg-canvas/90 backdrop-blur-md border-b border-edge transition-colors duration-200">
       <div className="max-w-6xl mx-auto px-1.5 xs:px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-1 xs:gap-1.5 sm:gap-4">
         {/* Brand Logo & Wordmark Left */}
         <Link
