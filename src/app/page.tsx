@@ -341,11 +341,6 @@ export default function HomePage() {
                   <h2 className="text-lg sm:text-xl font-serif font-bold text-ink">
                     {locale === "bn" ? "কাউকে চিঠি পাঠান" : "Send a Letter to Someone"}
                   </h2>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    {locale === "bn"
-                      ? "প্রাপকের ডাকবাক্সের নাম লিখুন এবং সরাসরি তার চিঠির পাতায় যান।"
-                      : "Enter their mailbox username to jump straight to their writing desk."}
-                  </p>
                 </div>
               </div>
 
@@ -389,13 +384,6 @@ export default function HomePage() {
                         : "No active mailbox found with this name."}
                     </span>
                   )}
-                  {searchStatus === "idle" && (
-                    <span>
-                      {locale === "bn"
-                        ? "যাকে চিঠি পাঠাতে চান তার ইউজারনেম দিন"
-                        : "Enter the username of your recipient"}
-                    </span>
-                  )}
                 </div>
 
                 <Button
@@ -426,7 +414,7 @@ export default function HomePage() {
             <div className="lg:col-span-6 space-y-6 relative">
               <div className="flex items-center gap-3">
                 <AirmailTape label="PAR AVION" sublabel="বিমান ডাক · CHITHI" rotation={-3} />
-                <Badge variant="buttercup">
+                <Badge variant="buttercup" className="whitespace-nowrap text-[10px] sm:text-[11px]">
                   {t("home.badge")}
                 </Badge>
               </div>
@@ -458,22 +446,6 @@ export default function HomePage() {
                   ? "অ্যাকাউন্ট ছাড়া সম্পূর্ণ বেনামে চিঠি পাওয়ার ব্যক্তিগত ঠিকানা। নির্ধারিত সময় শেষেই সব চিঠি চিরতরে মুছে যাবে।"
                   : t("home.heroDesc")}
               </p>
-
-              {/* Trust Indicators */}
-              <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-ink-muted">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-wax" />
-                  {locale === "bn" ? "কোনো পাসওয়ার্ড নেই" : "Zero passwords"}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                  {locale === "bn" ? "কোনো ট্র্যাকিং নেই" : "No tracking"}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-wax" />
-                  {locale === "bn" ? "সময় শেষেই চিরতরে বিলীন" : "Hard TTL purge"}
-                </span>
-              </div>
 
               {/* Scrapbook Paper Note */}
               <div className="pt-1">
@@ -561,9 +533,6 @@ export default function HomePage() {
                           <h2 className="text-xl font-serif font-bold text-ink">
                             {t("home.createHeading")}
                           </h2>
-                          <p className="text-xs text-ink-muted mt-1">
-                            {t("home.createSubheading")}
-                          </p>
                         </div>
 
                         <form onSubmit={handleCreate} className="space-y-5">
@@ -579,11 +548,6 @@ export default function HomePage() {
                               maxLength={50}
                               required
                             />
-                            <p className="text-[11px] text-ink-muted">
-                              {locale === "bn"
-                                ? "নাম লিখলেই নিচে একটি স্বয়ংক্রিয় ও ফাঁকা ইউজারনেম তৈরি হবে।"
-                                : "Entering your name will automatically suggest an available username below."}
-                            </p>
                           </div>
 
                           {/* Username Field with Live Validation & Editable Suggestion */}
@@ -629,7 +593,6 @@ export default function HomePage() {
                             </div>
 
                             <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                              <span>{t("home.usernameHelp")}</span>
                               {availability === "available" && (
                                 <span className="text-success font-medium">
                                   {t("home.usernameAvailable")}
@@ -649,12 +612,6 @@ export default function HomePage() {
                               <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                                 {t("home.durationLabel")}
                               </label>
-                              <span className="text-[11px] font-mono font-medium text-wax bg-warn-surface px-2.5 py-0.5 rounded-full border border-warn-edge">
-                                {durationKey === "12h" && (locale === "bn" ? "১২ ঘণ্টা" : "12 hours")}
-                                {durationKey === "24h" && (locale === "bn" ? "২৪ ঘণ্টা (১ দিন)" : "24 hours (1 day)")}
-                                {durationKey === "3d" && (locale === "bn" ? "৩ দিন (৭২ ঘণ্টা)" : "3 days (72 hours)")}
-                                {durationKey === "7d" && (locale === "bn" ? "৭ দিন (১ সপ্তাহ)" : "7 days (1 week)")}
-                              </span>
                             </div>
                             <div className="grid grid-cols-4 gap-2">
                               {durationOptions.map((key) => {
@@ -679,24 +636,6 @@ export default function HomePage() {
                                 );
                               })}
                             </div>
-                            <p className="text-[11px] text-ink-muted leading-relaxed">
-                              {durationKey === "12h" &&
-                                (locale === "bn"
-                                  ? "১২ ঘণ্টা পর এই ডাকবাক্স ও এর সমস্ত চিঠি চিরতরে স্বয়ংক্রিয়ভাবে মুছে যাবে।"
-                                  : "This mailbox and all letters will automatically expire and delete in 12 hours.")}
-                              {durationKey === "24h" &&
-                                (locale === "bn"
-                                  ? "২৪ ঘণ্টা (১ দিন) পর এই ডাকবাক্স ও এর সমস্ত চিঠি চিরতরে স্বয়ংক্রিয়ভাবে মুছে যাবে।"
-                                  : "This mailbox and all letters will automatically expire and delete in 24 hours (1 day).")}
-                              {durationKey === "3d" &&
-                                (locale === "bn"
-                                  ? "৩ দিন (৭২ ঘণ্টা) পর এই ডাকবাক্স ও এর সমস্ত চিঠি চিরতরে স্বয়ংক্রিয়ভাবে মুছে যাবে।"
-                                  : "This mailbox and all letters will automatically expire and delete in 3 days (72 hours).")}
-                              {durationKey === "7d" &&
-                                (locale === "bn"
-                                  ? "৭ দিন (১ সপ্তাহ) পর এই ডাকবাক্স ও এর সমস্ত চিঠি চিরতরে স্বয়ংক্রিয়ভাবে মুছে যাবে।"
-                                  : "This mailbox and all letters will automatically expire and delete in 7 days (1 week).")}
-                            </p>
                           </div>
 
                           {/* Optional Gender for Bottle routing */}
@@ -713,9 +652,6 @@ export default function HomePage() {
                               <option value="female">{t("home.genderOptions.female")}</option>
                               <option value="other">{t("home.genderOptions.other")}</option>
                             </Select>
-                            <p className="text-[11px] text-ink-muted">
-                              {t("home.genderHelper")}
-                            </p>
                           </div>
 
                           {/* Inline Form Error & Recovery Notice */}
@@ -757,13 +693,13 @@ export default function HomePage() {
                           </Button>
                         </form>
 
-                        {/* Centered Passcode Login Link */}
-                        <div className="pt-3 border-t border-edge text-center">
+                        {/* Passcode Login Button */}
+                        <div className="pt-3 border-t border-edge">
                           <Link
                             href="/recover"
-                            className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-wax transition-colors font-mono"
+                            className="flex w-full items-center justify-center gap-2 rounded-full border border-edge bg-surface px-5 py-3 text-sm font-medium text-ink hover:bg-canvas hover:border-wax transition-colors cursor-pointer"
                           >
-                            <KeyRound size={13} strokeWidth={1.5} />
+                            <KeyRound size={16} strokeWidth={1.5} className="text-wax" />
                             <span>
                               {locale === "bn"
                                 ? "আগের তৈরি করা ইনবক্স আছে? [পাসকোড দিয়ে লগইন করুন]"
@@ -786,11 +722,6 @@ export default function HomePage() {
                           <h2 className="text-xl font-serif font-bold text-ink">
                             {locale === "bn" ? "কাউকে চিঠি পাঠান" : "Send a Letter"}
                           </h2>
-                          <p className="text-xs text-ink-muted mt-1">
-                            {locale === "bn"
-                              ? "প্রাপকের ডাকবাক্সের নাম লিখুন এবং সরাসরি তার ব্যক্তিগত চিঠির পাতায় যান।"
-                              : "Enter the recipient's mailbox username to open their writing desk."}
-                          </p>
                         </div>
 
                         <div className="space-y-4">
@@ -837,13 +768,6 @@ export default function HomePage() {
                                     : "No active mailbox found with this name."}
                                 </span>
                               )}
-                              {searchStatus === "idle" && (
-                                <span>
-                                  {locale === "bn"
-                                    ? "যাকে চিঠি পাঠাতে চান তার ইউজারনেম দিন"
-                                    : "Enter the username of your recipient"}
-                                </span>
-                              )}
                             </div>
                           </div>
 
@@ -870,11 +794,6 @@ export default function HomePage() {
                             <Sparkles size={14} strokeWidth={1.5} />
                             <span>{locale === "bn" ? "নির্দিষ্ট কোনো প্রাপক নেই?" : "No specific recipient?"}</span>
                           </div>
-                          <p className="text-[11px] leading-relaxed">
-                            {locale === "bn"
-                              ? "চিঠির বোতল ব্যবহার করে অচেনা কারও ঠিকানায় সাগরে চিঠি ভাসিয়ে দিতে পারেন।"
-                              : "You can cast a drift bottle into the ocean to reach an anonymous stranger."}
-                          </p>
                           <Link href="/bottle" className="text-[11px] text-wax font-medium underline underline-offset-2 block pt-1">
                             {locale === "bn" ? "চিঠির বোতল ভাসান →" : "Drift a Bottle →"}
                           </Link>
@@ -894,11 +813,6 @@ export default function HomePage() {
             <h2 className="text-xl sm:text-2xl font-serif font-bold text-ink">
               {locale === "bn" ? "চিঠির জগৎ ঘুরে দেখুন" : "Explore the Universe of Letters"}
             </h2>
-            <p className="text-xs sm:text-sm text-ink-muted">
-              {locale === "bn"
-                ? "জনপ্রিয় বেনামী চিঠি পড়ুন কিংবা সাগরে মনের ভাবনা ভাসিয়ে দিন"
-                : "Discover letters on the public community wall or cast words into the ocean"}
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -923,12 +837,6 @@ export default function HomePage() {
                 <h3 className="text-xl font-serif font-bold text-ink group-hover:text-wax transition-colors mb-2">
                   {locale === "bn" ? "বেনামী খাম পড়ুন" : "Read Benami Kham"}
                 </h3>
-
-                <p className="text-xs sm:text-sm text-ink-muted leading-relaxed mb-6">
-                  {locale === "bn"
-                    ? "প্রাপকদের ভালোলাগায় প্রকাশিত শত শত না বলা চিঠি, স্বীকারোক্তি ও গোপন অনুভূতি।"
-                    : "Read hundreds of anonymous confessions, quiet memories, and published letters floating on the community wall."}
-                </p>
 
                 <div className="flex items-center gap-2 text-xs font-serif text-wax group-hover:translate-x-1 transition-transform">
                   <span>{locale === "bn" ? "দেওয়ালে যান" : "Explore Public Wall"}</span>
@@ -958,12 +866,6 @@ export default function HomePage() {
                 <h3 className="text-xl font-serif font-bold text-ink group-hover:text-wax transition-colors mb-2">
                   {locale === "bn" ? "চিঠির বোতল ভাসান" : "Cast a Bottle into the Ocean"}
                 </h3>
-
-                <p className="text-xs sm:text-sm text-ink-muted leading-relaxed mb-6">
-                  {locale === "bn"
-                    ? "উন্মুক্ত সাগরে মনের ভাবনা ভাসিয়ে দিন, যা পৌঁছাবে সম্পূর্ণ অচেনা কোনো মানুষের তীরে।"
-                    : "Cast your heartfelt words into the open digital sea to reach a completely random stranger's inbox."}
-                </p>
 
                 <div className="flex items-center gap-2 text-xs font-serif text-skymist-text group-hover:translate-x-1 transition-transform">
                   <span>{locale === "bn" ? "সাগরে ভাসান" : "Send Bottle Letter"}</span>
