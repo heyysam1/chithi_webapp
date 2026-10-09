@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { CopyField } from "@/components/ui/CopyField";
 import { useLocale } from "@/hooks/useLocale";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSession } from "@/hooks/useSession";
@@ -162,16 +161,6 @@ function RecoverForm() {
               <h2 className="text-xl font-serif font-bold text-ink">
                 {t("recover.successTitle")}
               </h2>
-              {recovered.passcodeRotated && (
-                <div className="text-left">
-                  <CopyField
-                    value={recovered.recoveryPasscode}
-                    label={t("recover.newPasscodeTitle")}
-                    helperText={t("recover.newPasscodeDesc")}
-                    isSensitive
-                  />
-                </div>
-              )}
               <Button
                 type="button"
                 variant="primary"
