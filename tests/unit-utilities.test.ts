@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   timingSafeEqual,
   hashWithPepper,
@@ -6,6 +6,14 @@ import {
 } from "../src/lib/crypto";
 import { toPlainText, stripUrls, countGraphemes } from "../src/lib/sanitize";
 import { remainingTtlSeconds } from "../src/lib/mailbox";
+import { formatCountdown } from "../src/lib/time";
+import { PERMANENT_EXPIRES_AT } from "../src/lib/constants";
+import {
+  savePasscode,
+  savePasscodeQuiet,
+  readPasscode,
+  readOneTimePasscode,
+} from "../src/lib/passcodeStorage";
 import { InMemoryRedisShim } from "../src/lib/redis";
 
 describe("HYG-03: Unit Utilities & Cryptographic Functions", () => {
@@ -170,5 +178,85 @@ describe("HYG-03: Unit Utilities & Cryptographic Functions", () => {
         shim.zadd("string_key_for_zadd", { score: 10, member: "m1" })
       ).rejects.toThrow("WRONGTYPE Operation against a key holding the wrong kind of value");
     });
+  });
+});
+
+describe("M1: formatCountdown Infinite boundary", () => {
+  it("returns Infinite at exactly PERMANENT_EXPIRES_AT (en)", () => {
+    expect(PERMANENT_EXPIRES_AT).toBe(4102444800000);
+    expect(formatCountdown(PERMANENT_EXPIRES_AT, "en")).toBe("Infinite");
+  });
+
+  it("returns Infinite at exactly PERMANENT_EXPIRES_AT (bn)", () => {
+    expect(formatCountdown(PERMANENT_EXPIRES_AT, "bn")).toBe("অসীম");
+  });
+
+  it("returns Infinite above PERMANENT_EXPIRES_AT", () => {
+    expect(formatCountdown(PERMANENT_EXPIRES_AT + 1, "en")).toBe("Infinite");
+    expect(formatCountdown(PERMANENT_EXPIRES_AT + 1, "bn")).toBe("অসীম");
+  });
+
+  it("returns a numeric countdown 1ms below the boundary (not Infinite)", () => {
+    const justBelow = PERMANENT_EXPIRES_AT - 1;
+    expect(formatCountdown(justBelow, "en")).not.toBe("Infinite");
+    expect(formatCountdown(justBelow, "bn")).not.toBe("অসীম");
+    // Still a far-future numeric countdown, not "Expired".
+    expect(formatCountdown(justBelow, "en")).not.toBe("Expired");
+  });
+});
+
+describe("M2: savePasscode vs savePasscodeQuiet storage behavior", () => {
+  const makeStorage = () => {
+    const store = new Map<string, string>();
+    return {
+      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+      setItem: (k: string, v: string) => {
+        store.set(k, String(v));
+      },
+      removeItem: (k: string) => {
+        store.delete(k);
+      },
+      clear: () => {
+        store.clear();
+      },
+    };
+  };
+
+  beforeEach(() => {
+    // passcodeStorage no-ops without window; give it mocked browser storage.
+    (globalThis as any).window = globalThis;
+    (globalThis as any).localStorage = makeStorage();
+    (globalThis as any).sessionStorage = makeStorage();
+  });
+
+  afterEach(() => {
+    delete (globalThis as any).window;
+    delete (globalThis as any).localStorage;
+    delete (globalThis as any).sessionStorage;
+  });
+
+  it("savePasscode writes to BOTH localStorage and sessionStorage", () => {
+    savePasscode("someone", "111222");
+    // Persistent copy for the profile modal.
+    expect(readPasscode("someone")).toBe("111222");
+    // One-time flag for the inbox key card.
+    expect(readOneTimePasscode("someone")).toBe("111222");
+  });
+
+  it("savePasscodeQuiet writes ONLY to localStorage (no key-card flag)", () => {
+    savePasscodeQuiet("someone", "333444");
+    // Persistent copy still there.
+    expect(readPasscode("someone")).toBe("333444");
+    // No session flag, so the one-time key card does not pop up.
+    expect(readOneTimePasscode("someone")).toBeNull();
+  });
+
+  it("quiet save after a loud save does not leak a session flag", () => {
+    savePasscode("someone", "555666");
+    expect(readOneTimePasscode("someone")).toBe("555666");
+    sessionStorage.removeItem("chithi:passcode:someone");
+    savePasscodeQuiet("someone", "777888");
+    expect(readPasscode("someone")).toBe("777888");
+    expect(readOneTimePasscode("someone")).toBeNull();
   });
 });
