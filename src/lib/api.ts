@@ -122,6 +122,44 @@ export function getViewerHash(req: Request): string {
 }
 
 /**
+ * Canonical base URL for generated links (public/inbox URLs).
+ * Prefers the configured NEXT_PUBLIC_APP_URL; falls back to request host
+ * headers only when the env var is absent (local dev). Never trust
+ * x-forwarded-host for URL building in production — it's client-influenced
+ * on direct-to-origin requests and enables phishing-ready link generation.
+ */
+export function getRequestBaseUrl(req: Request): string {
+  const configured = env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+  if (configured) return configured;
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  return host ? `${proto}://${host}` : "";
+}
+
+/**
+ * True for loopback requests. Uses exact hostname matching — never a
+ * substring check, so "localhost.evil.com" does NOT match.
+ */
+export function isLocalRequest(req: Request): boolean {
+  const raw = (
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host") ||
+    ""
+  )
+    .trim()
+    .toLowerCase();
+  let hostname = raw;
+  if (hostname.startsWith("[")) {
+    // Bracketed IPv6, e.g. [::1]:3000
+    const end = hostname.indexOf("]");
+    hostname = end > 0 ? hostname.slice(1, end) : hostname;
+  } else {
+    hostname = hostname.split(":")[0] ?? "";
+  }
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
+/**
  * Defensive JSON body parser that strictly enforces MAX_JSON_BODY_BYTES
  * before and after parsing, and validates against a Zod schema.
  */

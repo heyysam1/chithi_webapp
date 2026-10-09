@@ -125,8 +125,27 @@ export interface ReportsData {
   items: ReportItem[];
 }
 
+export interface TopMailboxesData {
+  items: { username: string; letterCount: number; isPermanent: boolean }[];
+  truncated: boolean;
+}
+
 export interface MaintenanceData {
   enabled: boolean;
+}
+
+export interface BanInfo {
+  key: string;
+  kind: "ip" | "user";
+  identifier: string;
+  reason: string | null;
+  by: string | null;
+  at: number | null;
+  ttlSeconds: number | null;
+}
+
+export interface BanListData {
+  bans: BanInfo[];
 }
 
 /* ---- Date helpers (YYYY-MM-DD, local time) ---- */

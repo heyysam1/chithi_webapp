@@ -27,7 +27,15 @@ export function extractAuthToken(req: Request, usernameLower: string): string | 
 
     if (match) {
       const tokenVal = match.slice(cookieName.length + 1).trim();
-      if (tokenVal) return decodeURIComponent(tokenVal);
+      if (tokenVal) {
+        try {
+          return decodeURIComponent(tokenVal);
+        } catch {
+          // Malformed cookie value (e.g. a bare "%") — treat as absent
+          // rather than throwing a 500.
+          return null;
+        }
+      }
     }
   }
 
@@ -104,6 +112,14 @@ export async function requireMailboxOwner(
   const isValid = timingSafeEqual(incomingHash, mailbox.accessTokenHash);
 
   if (!isValid) {
+    throw new ApiError("FORBIDDEN", "errors.forbidden", 403);
+  }
+
+  // Enforce admin user-kind bans (abuse:block:user:{usernameLower}).
+  // The ban key carries a TTL, so expiry is automatic — presence alone
+  // is sufficient to deny access.
+  const userBan = await redis.get(keys.abuseBlockUser(usernameLower));
+  if (userBan !== null && userBan !== undefined) {
     throw new ApiError("FORBIDDEN", "errors.forbidden", 403);
   }
 

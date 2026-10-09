@@ -1,6 +1,18 @@
 import { nanoid } from "nanoid";
 
 /**
+ * Uniform random integer in [min, max) using the platform CSPRNG.
+ * (Modulo bias is negligible for these tiny ranges, and the values are
+ * only username-suggestion suffixes that still race through SET NX.)
+ */
+function randomInt(min: number, max: number): number {
+  const range = max - min;
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return min + ((bytes[0] ?? 0) % range);
+}
+
+/**
  * Generates a 256-bit cryptographically secure access token,
  * base64url encoded (32 random bytes).
  */
@@ -87,9 +99,9 @@ export function suggestUsernameFromName(name: string): string {
 
   if (slug.length < 3) {
     if (slug.length === 0) {
-      slug = `writer-${Math.floor(1000 + Math.random() * 9000)}`;
+      slug = `writer-${randomInt(1000, 10000)}`;
     } else {
-      slug = `${slug}-${Math.floor(10 + Math.random() * 90)}`;
+      slug = `${slug}-${randomInt(10, 100)}`;
     }
   }
 
