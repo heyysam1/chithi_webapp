@@ -58,6 +58,13 @@ export const BURN_WINDOW_MS = 60_000;
 
 export const MAILBOX_LETTER_CAP = 300;
 
+/**
+ * Maximum reply-thread depth. The original letter is depth 0; a reply to a
+ * letter already at this depth is rejected so threads can't become an
+ * endless messaging channel.
+ */
+export const MAX_THREAD_DEPTH = 5;
+
 export const FEED_PAGE_SIZE = 24;
 export const INBOX_PAGE_SIZE = 20;
 
@@ -67,6 +74,20 @@ export const DURATIONS = {
   "3d": 259200,
   "7d": 604800,
 } as const;
+
+/** Extension options offered on the profile page (24h / 3d / 5d / 7d). */
+export const EXTEND_DURATIONS = {
+  "24h": 86400,
+  "3d": 259200,
+  "5d": 432000,
+  "7d": 604800,
+} as const;
+
+/** Max lifetime extensions per mailbox (lifetime cap). */
+export const MAX_EXTENSIONS_PER_MAILBOX = 3;
+
+/** Platform ceiling: a mailbox may never live longer than 7 days from creation. */
+export const PLATFORM_MAX_LIFETIME_S = 7 * 86400;
 
 export const FEED_TTL_S = 172800; // 48 hours
 export const MAX_JSON_BODY_BYTES = 16_384;

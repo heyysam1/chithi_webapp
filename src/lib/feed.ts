@@ -1,82 +1,177 @@
-import { FeedRecord, LetterRecord } from "./types";
+import { FeedRecord } from "./types";
 import { FEED_PAGE_SIZE, FEED_TTL_S } from "./constants";
 import { keys } from "./keys";
 import { getRedis } from "./redis";
 import { generateFeedId } from "./ids";
 import { ApiError } from "./api";
-import { getMailbox, remainingTtlSeconds } from "./mailbox";
+import { getMailbox, keyTtlSeconds } from "./mailbox";
 
 export interface FeedItemWithViewer extends FeedRecord {
   viewerHasReacted: boolean;
 }
+
+/**
+ * Number of *distinct* reporters required before a feed item is auto-quarantined (§7.2).
+ */
+export const REPORT_QUARANTINE_THRESHOLD = 3;
+
+/**
+ * How long report records are retained.
+ */
+const REPORT_RETENTION_S = 7 * 86400;
+
+/**
+ * Atomic feed publish: the letter read, guard checks, feed-item creation and
+ * the `published` flag write all happen inside one Lua script, so two
+ * concurrent publish requests cannot both mint a feed item for the same
+ * letter (H-6). Error statuses mirror the previous JS implementation exactly.
+ */
+const FEED_PUBLISH_SCRIPT = `
+-- KEYS[1]: letter key (ltr:{id})
+-- KEYS[2]: feed item key (feed:{feedId})
+-- KEYS[3]: feed:ids zset
+-- KEYS[4]: feed:trending zset
+-- ARGV[1]: usernameLower (recipient check)
+-- ARGV[2]: now in ms (capsule check, feed createdAt, zset score)
+-- ARGV[3]: feed item TTL seconds
+-- ARGV[4]: feedId (unlinkable public id)
+-- ARGV[5]: letter key TTL seconds
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+  return cjson.encode({ status = 'NOT_FOUND' })
+end
+
+local letter = cjson.decode(raw)
+
+if letter.recipient ~= ARGV[1] then
+  return cjson.encode({ status = 'FORBIDDEN' })
+end
+
+if letter.published then
+  return cjson.encode({ status = 'ALREADY_PUBLISHED' })
+end
+
+if letter.burnAfterReading then
+  return cjson.encode({ status = 'FORBIDDEN_BURN' })
+end
+
+if letter.lock ~= nil and letter.lock.kind == 'capsule' and tonumber(ARGV[2]) < tonumber(letter.lock.unlockAt) then
+  return cjson.encode({ status = 'LOCKED_CAPSULE' })
+end
+
+if letter.lock ~= nil and letter.lock.kind == 'riddle' and letter.lock.solvedAt == nil then
+  return cjson.encode({ status = 'LOCKED_RIDDLE' })
+end
+
+letter.published = true
+
+-- Build the public feed record from the letter, STRIPPING recipient, hints,
+-- locks and sender name (§5.4). The unlinkable feedId comes from ARGV[4].
+local feedRecord = {
+  id = ARGV[4],
+  body = letter.body,
+  paper = letter.paper,
+  stamp = letter.stamp,
+  createdAt = tonumber(ARGV[2]),
+  hearts = 0,
+  heartCracks = 0,
+  version = 1,
+}
+redis.call('SET', KEYS[2], cjson.encode(feedRecord), 'EX', tonumber(ARGV[3]))
+redis.call('ZADD', KEYS[3], tonumber(ARGV[2]), ARGV[4])
+redis.call('ZADD', KEYS[4], 0, ARGV[4])
+redis.call('SET', KEYS[1], cjson.encode(letter), 'EX', tonumber(ARGV[5]))
+
+return cjson.encode({ status = 'OK' })
+`;
+
+/**
+ * Atomic feed reaction: existence check, per-viewer dedup (SET NX) and the
+ * counter increment all happen inside one Lua script. This fixes the racy
+ * read-modify-write that lost concurrent increments (H-7), stops planting
+ * dedup keys for nonexistent items (M-3, existence is checked first), and
+ * guards the TTL rewrite against TTL-less keys (M-4).
+ */
+const FEED_REACT_SCRIPT = `
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+  return cjson.encode({ status = 'NOT_FOUND' })
+end
+
+local acquired = redis.call('SET', KEYS[2], '1', 'NX', 'EX', tonumber(ARGV[3]))
+if not acquired then
+  return cjson.encode({ status = 'ALREADY_DONE' })
+end
+
+local item = cjson.decode(raw)
+if ARGV[1] == 'heart' then
+  item.hearts = item.hearts + 1
+else
+  item.heartCracks = item.heartCracks + 1
+end
+
+local ttl = tonumber(redis.call('TTL', KEYS[1]))
+if ttl == nil or ttl < 0 then
+  ttl = tonumber(ARGV[4])
+end
+
+redis.call('SET', KEYS[1], cjson.encode(item), 'EX', ttl)
+redis.call('ZADD', KEYS[3], item.hearts + item.heartCracks, ARGV[2])
+
+return cjson.encode({ status = 'OK', hearts = item.hearts, heartCracks = item.heartCracks })
+`;
 
 export async function publishLetterToFeed(
   usernameLower: string,
   letterId: string
 ): Promise<{ feedId: string }> {
   const redis = getRedis();
-  const raw = await redis.get<string | LetterRecord>(keys.letter(letterId));
 
-  if (!raw) {
-    throw new ApiError("NOT_FOUND", "errors.letterNotFound", 404);
-  }
-
-  const letter: LetterRecord = typeof raw === "string" ? JSON.parse(raw) : raw;
-
-  if (letter.recipient !== usernameLower) {
-    throw new ApiError("FORBIDDEN", "errors.forbidden", 403);
-  }
-
-  if (letter.published) {
-    throw new ApiError("ALREADY_DONE", "errors.alreadyPublished", 409);
-  }
-
-  if (letter.burnAfterReading) {
-    throw new ApiError("FORBIDDEN", "errors.cannotPublishBurnLetter", 403);
-  }
-
-  if (letter.lock.kind === "capsule" && Date.now() < letter.lock.unlockAt) {
-    throw new ApiError("LOCKED", "errors.letterLockedCapsule", 423);
-  }
-
-  if (letter.lock.kind === "riddle" && !letter.lock.solvedAt) {
-    throw new ApiError("LOCKED", "errors.letterLockedRiddle", 423);
-  }
-
-  // Create brand new feed record with unlinkable ID, STRIPPING recipient, hints, locks (§5.4)
+  // Unlinkable feed ID, minted up front so the atomic script can reference it.
   const feedId = generateFeedId();
   const now = Date.now();
 
-  const feedRecord: FeedRecord = {
-    id: feedId,
-    body: letter.body,
-    paper: letter.paper,
-    stamp: letter.stamp,
-    createdAt: now,
-    hearts: 0,
-    heartCracks: 0,
-    version: 1,
-  };
-
-  const pipeline = redis.pipeline();
-  pipeline.set(keys.feedItem(feedId), JSON.stringify(feedRecord), {
-    ex: FEED_TTL_S,
-  });
-  pipeline.zadd(keys.feedIds(), { score: now, member: feedId });
-  pipeline.zadd(keys.feedTrending(), { score: 0, member: feedId });
-
-  // Mark original letter as published
-  letter.published = true;
   const mailbox = await getMailbox(usernameLower);
   if (!mailbox) {
     throw new ApiError("GONE", "errors.mailboxExpired", 410);
   }
-  const ttl = remainingTtlSeconds(mailbox);
-  pipeline.set(keys.letter(letterId), JSON.stringify(letter), { ex: ttl });
+  const ttl = keyTtlSeconds(mailbox);
 
-  await pipeline.exec();
+  // All guard checks, the feed-item creation and the `published` flag write
+  // run atomically inside FEED_PUBLISH_SCRIPT, so concurrent publishes of the
+  // same letter cannot both succeed (H-6). The script builds the stripped
+  // feed record (§5.4) from the canonical letter data it guarded on.
+  const resRaw = await redis.eval<string>(
+    FEED_PUBLISH_SCRIPT,
+    [
+      keys.letter(letterId),
+      keys.feedItem(feedId),
+      keys.feedIds(),
+      keys.feedTrending(),
+    ],
+    [usernameLower, now, FEED_TTL_S, feedId, ttl]
+  );
 
-  return { feedId };
+  const res: { status: string } =
+    typeof resRaw === "string" ? JSON.parse(resRaw) : resRaw;
+
+  switch (res.status) {
+    case "OK":
+      return { feedId };
+    case "ALREADY_PUBLISHED":
+      throw new ApiError("ALREADY_DONE", "errors.alreadyPublished", 409);
+    case "FORBIDDEN":
+      throw new ApiError("FORBIDDEN", "errors.forbidden", 403);
+    case "FORBIDDEN_BURN":
+      throw new ApiError("FORBIDDEN", "errors.cannotPublishBurnLetter", 403);
+    case "LOCKED_CAPSULE":
+      throw new ApiError("LOCKED", "errors.letterLockedCapsule", 423);
+    case "LOCKED_RIDDLE":
+      throw new ApiError("LOCKED", "errors.letterLockedRiddle", 423);
+    case "NOT_FOUND":
+    default:
+      throw new ApiError("NOT_FOUND", "errors.letterNotFound", 404);
+  }
 }
 
 export async function pruneExpiredFeedItems(): Promise<number> {
@@ -256,59 +351,81 @@ export async function reactToFeedItem(
 ): Promise<{ hearts: number; heartCracks: number }> {
   const redis = getRedis();
 
-  // 1. Server-side deduplication via SET NX EX 48h (§7.2, §10.2)
-  const dedupKey = keys.feedReactionDedup(feedId, viewerHash);
-  const acquired = await redis.set(dedupKey, "1", { nx: true, ex: FEED_TTL_S });
+  // Existence check, per-viewer dedup and the counter increment all run
+  // atomically inside FEED_REACT_SCRIPT: no lost increments under
+  // concurrency (H-7), no dedup key is planted for nonexistent items (M-3),
+  // and the TTL rewrite is guarded against TTL-less keys (M-4).
+  const resRaw = await redis.eval<string>(
+    FEED_REACT_SCRIPT,
+    [
+      keys.feedItem(feedId),
+      keys.feedReactionDedup(feedId, viewerHash),
+      keys.feedTrending(),
+    ],
+    [reaction, feedId, FEED_TTL_S, FEED_TTL_S]
+  );
 
-  if (!acquired) {
-    throw new ApiError("ALREADY_DONE", "errors.alreadyReacted", 409);
-  }
+  const res: { status: string; hearts?: number; heartCracks?: number } =
+    typeof resRaw === "string" ? JSON.parse(resRaw) : resRaw;
 
-  // 2. Load feed record
-  const raw = await redis.get<string | FeedRecord>(keys.feedItem(feedId));
-  if (!raw) {
+  if (res.status === "NOT_FOUND") {
     throw new ApiError("NOT_FOUND", "errors.feedItemNotFound", 404);
   }
-
-  const item: FeedRecord = typeof raw === "string" ? JSON.parse(raw) : raw;
-
-  if (reaction === "heart") {
-    item.hearts += 1;
-  } else {
-    item.heartCracks += 1;
+  if (res.status === "ALREADY_DONE") {
+    throw new ApiError("ALREADY_DONE", "errors.alreadyReacted", 409);
   }
-
-  const trendingScore = item.hearts + item.heartCracks;
-  const ttl = Math.max(1, await redis.ttl(keys.feedItem(feedId)));
-
-  const pipeline = redis.pipeline();
-  pipeline.set(keys.feedItem(feedId), JSON.stringify(item), { ex: ttl });
-  pipeline.zadd(keys.feedTrending(), { score: trendingScore, member: feedId });
-  await pipeline.exec();
-
-  return { hearts: item.hearts, heartCracks: item.heartCracks };
+  return { hearts: res.hearts ?? 0, heartCracks: res.heartCracks ?? 0 };
 }
 
 export async function reportContent(
   targetType: "letter" | "feed",
   targetId: string,
   _reason: string,
-  _note?: string
+  _note?: string,
+  reporterHash?: string
 ): Promise<{ reported: true }> {
   const redis = getRedis();
   const reportKey = keys.report(targetType, targetId);
 
-  const count = await redis.hincrby(reportKey, "count", 1);
-  await redis.expire(reportKey, 7 * 86400); // 7d retention
+  // Distinct-reporter accounting (C-3): every reporter identity gets its own
+  // hash field, incremented atomically. Only the FIRST report from a given
+  // identity bumps the "distinct" counter, so a single actor can no longer
+  // reach the quarantine threshold by reporting repeatedly.
+  //
+  // Callers that cannot attribute a reporter identity fall back to a
+  // per-call unique field, which preserves the old plain-counter behavior
+  // for those legacy call paths. The report route should pass
+  // getViewerHash(req) here so the protection is effective in production.
+  const reporterField = reporterHash
+    ? `r:${reporterHash}`
+    : `r:anon:${generateFeedId()}`;
 
-  // Auto-quarantine: at 3 distinct reports on a feed item, remove it immediately (§7.2)
-  if (targetType === "feed" && count >= 3) {
-    console.warn(`[chithi moderation] Quarantining feed item "${targetId}" after ${count} reports.`);
-    const pipeline = redis.pipeline();
-    pipeline.del(keys.feedItem(targetId));
-    pipeline.zrem(keys.feedIds(), targetId);
-    pipeline.zrem(keys.feedTrending(), targetId);
-    await pipeline.exec();
+  const reporterSeen = await redis.hincrby(reportKey, reporterField, 1);
+  await Promise.all([
+    redis.hincrby(reportKey, "count", 1),
+    redis.expire(reportKey, REPORT_RETENTION_S),
+  ]);
+
+  // HINCRBY is atomic, so exactly one call per reporter identity observes
+  // the 1 -> "first sighting" transition; the "distinct" counter therefore
+  // counts each identity once even under concurrency.
+  if (reporterSeen === 1) {
+    const distinct = await redis.hincrby(reportKey, "distinct", 1);
+
+    // Auto-quarantine: at REPORT_QUARANTINE_THRESHOLD *distinct* reports on
+    // a feed item, remove it immediately (§7.2). The removal pipeline is
+    // idempotent, so reporters crossing the threshold concurrently cannot
+    // corrupt state — the item simply ends up deleted exactly once.
+    if (targetType === "feed" && distinct >= REPORT_QUARANTINE_THRESHOLD) {
+      console.warn(
+        `[chithi moderation] Quarantining feed item "${targetId}" after ${distinct} distinct reports.`
+      );
+      const pipeline = redis.pipeline();
+      pipeline.del(keys.feedItem(targetId));
+      pipeline.zrem(keys.feedIds(), targetId);
+      pipeline.zrem(keys.feedTrending(), targetId);
+      await pipeline.exec();
+    }
   }
 
   return { reported: true };

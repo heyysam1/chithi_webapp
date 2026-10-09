@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { z } from "zod";
+import { USERNAME_REGEX } from "./constants";
 
 const isBuildTimeOnly =
   process.env.npm_lifecycle_event === "build" &&
@@ -43,6 +44,12 @@ const envSchema = z.object({
     ? z.string().url("NEXT_PUBLIC_APP_URL must be a valid URL")
     : z.string().url().default("http://localhost:3000"),
   NEXT_PUBLIC_DEFAULT_LOCALE: z.enum(["en", "bn"]).default("en"),
+  // Permanent (never-expiring) owner mailbox. Credentials live ONLY in env —
+  // never hardcode them; this is a public repo.
+  PERMANENT_MAILBOX_ENABLED: z.enum(["true", "false"]).default("false"),
+  PERMANENT_MAILBOX_NAME: z.string().optional().or(z.literal("")),
+  PERMANENT_MAILBOX_USERNAME: z.string().optional().or(z.literal("")),
+  PERMANENT_MAILBOX_PASSCODE: z.string().optional().or(z.literal("")),
 });
 
 const parsed = envSchema.safeParse({
@@ -55,12 +62,47 @@ const parsed = envSchema.safeParse({
   CRON_SECRET: process.env.CRON_SECRET,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || (isProd ? undefined : "http://localhost:3000"),
   NEXT_PUBLIC_DEFAULT_LOCALE: process.env.NEXT_PUBLIC_DEFAULT_LOCALE || "en",
+  PERMANENT_MAILBOX_ENABLED: process.env.PERMANENT_MAILBOX_ENABLED,
+  PERMANENT_MAILBOX_NAME: process.env.PERMANENT_MAILBOX_NAME,
+  PERMANENT_MAILBOX_USERNAME: process.env.PERMANENT_MAILBOX_USERNAME,
+  PERMANENT_MAILBOX_PASSCODE: process.env.PERMANENT_MAILBOX_PASSCODE,
 });
 
 if (!parsed.success) {
   const formattedErrors = parsed.error.format();
   console.error("FATAL: Invalid or missing environment configuration:\n", JSON.stringify(formattedErrors, null, 2));
   throw new Error("Startup validation failed: required environment variables are invalid or missing.");
+}
+
+// Fail fast when the permanent mailbox is enabled but misconfigured.
+// Skipped in the browser (env vars are server-only there; enabled defaults to "false").
+if (!isBrowser && parsed.data.PERMANENT_MAILBOX_ENABLED === "true") {
+  const missing = [
+    "PERMANENT_MAILBOX_NAME",
+    "PERMANENT_MAILBOX_USERNAME",
+    "PERMANENT_MAILBOX_PASSCODE",
+  ].filter((k) => !parsed.data[k as "PERMANENT_MAILBOX_NAME"]?.trim());
+  if (missing.length > 0) {
+    console.error(
+      `FATAL: PERMANENT_MAILBOX_ENABLED=true but missing: ${missing.join(", ")}. ` +
+        "Set all three in the environment (Vercel env vars / .env.local) — never commit real values."
+    );
+    throw new Error(
+      "Startup validation failed: permanent mailbox is enabled but its credentials are incomplete."
+    );
+  }
+  const pUsername = parsed.data.PERMANENT_MAILBOX_USERNAME!.trim();
+  if (!USERNAME_REGEX.test(pUsername)) {
+    console.error(
+      `FATAL: PERMANENT_MAILBOX_USERNAME="${pUsername}" is not a valid mailbox username.`
+    );
+    throw new Error("Startup validation failed: PERMANENT_MAILBOX_USERNAME is invalid.");
+  }
+  const pPasscode = parsed.data.PERMANENT_MAILBOX_PASSCODE!.trim();
+  if (!/^\d{6}$/.test(pPasscode)) {
+    console.error("FATAL: PERMANENT_MAILBOX_PASSCODE must be exactly 6 digits (the /recover UI takes 6 digits).");
+    throw new Error("Startup validation failed: PERMANENT_MAILBOX_PASSCODE must be 6 digits.");
+  }
 }
 
 if (!isProd && !isVercelProd && (!process.env.AUTH_PEPPER || !process.env.IP_SALT)) {
