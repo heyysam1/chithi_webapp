@@ -35,9 +35,15 @@ export function CountdownBanner({ expiresAt, onExpired }: CountdownBannerProps) 
       const remMinutes = totalMinutes % 60;
 
       if (totalHours > 0) {
-        setCoarseAnnouncement(`${totalHours}h ${remMinutes}m remaining`);
+        setCoarseAnnouncement(
+          t("inbox.countdown.hoursRemaining", { h: totalHours, m: remMinutes })
+        );
+      } else if (totalMinutes === 1) {
+        setCoarseAnnouncement(t("inbox.countdown.minuteRemaining"));
       } else {
-        setCoarseAnnouncement(`${totalMinutes} minute${totalMinutes === 1 ? "" : "s"} remaining`);
+        setCoarseAnnouncement(
+          t("inbox.countdown.minutesRemaining", { count: totalMinutes })
+        );
       }
     };
 

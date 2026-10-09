@@ -24,6 +24,21 @@ export interface AdvancedModePanelProps {
   mailboxExpiresAt?: number;
 }
 
+/**
+ * Formats an epoch-ms timestamp as a `<input type="datetime-local">` value.
+ * datetime-local interprets values as LOCAL wall-clock time, so building the
+ * string from local getters is required. Using `toISOString()` (UTC) here
+ * would shift the displayed/parsed time by the user's timezone offset.
+ */
+export function toLocalDateTimeInputValue(epochMs: number): string {
+  const d = new Date(epochMs);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
 export function AdvancedModePanel({
   state,
   onChange,
@@ -36,10 +51,10 @@ export function AdvancedModePanel({
   const canCapsule =
     mailboxExpiresAt && mailboxExpiresAt > now + 60_000;
 
-  // Clamped datetime-local limits
-  const minDateStr = new Date(now + 60_000).toISOString().slice(0, 16);
+  // Clamped datetime-local limits (local time, not UTC)
+  const minDateStr = toLocalDateTimeInputValue(now + 60_000);
   const maxDateStr = mailboxExpiresAt
-    ? new Date(mailboxExpiresAt).toISOString().slice(0, 16)
+    ? toLocalDateTimeInputValue(mailboxExpiresAt)
     : undefined;
 
   const handleCapsuleChange = (isoStr: string) => {
@@ -78,9 +93,6 @@ export function AdvancedModePanel({
             <h4 className="text-sm font-semibold text-ink dark:text-ink-heading">
               {t("composer.advancedTitle")}
             </h4>
-            <p className="text-xs text-ink-muted">
-              {t("composer.advancedSubtitle")}
-            </p>
           </div>
         </div>
         <div className="text-ink-muted">
@@ -137,9 +149,6 @@ export function AdvancedModePanel({
                   <span className="text-sm text-ink dark:text-ink-heading font-medium">
                     {t("composer.lockCapsule")}
                   </span>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    {t("composer.lockCapsuleDesc")}
-                  </p>
 
                   {state.lockKind === "capsule" && (
                     <div className="mt-3 space-y-2">
@@ -149,7 +158,7 @@ export function AdvancedModePanel({
                         max={maxDateStr}
                         value={
                           state.unlockAt
-                            ? new Date(state.unlockAt).toISOString().slice(0, 16)
+                            ? toLocalDateTimeInputValue(state.unlockAt)
                             : ""
                         }
                         onChange={(e) => handleCapsuleChange(e.target.value)}
@@ -179,9 +188,6 @@ export function AdvancedModePanel({
                 <span className="text-sm text-ink dark:text-ink-heading font-medium">
                   {t("composer.lockRiddle")}
                 </span>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  {t("composer.lockRiddleDesc")}
-                </p>
 
                 {state.lockKind === "riddle" && (
                   <div className="mt-3 space-y-3">

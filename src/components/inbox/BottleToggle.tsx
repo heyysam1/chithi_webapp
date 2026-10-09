@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Toggle } from "../ui/Toggle";
 import { useToast } from "@/hooks/useToast";
 import { useLocale } from "@/hooks/useLocale";
+import { useAccessToken } from "@/hooks/useAccessToken";
 
 export interface BottleToggleProps {
   username: string;
@@ -15,6 +16,7 @@ export function BottleToggle({ username, initialValue }: BottleToggleProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const { showToast } = useToast();
   const { t } = useLocale();
+  const { token } = useAccessToken(username);
 
   const handleToggle = async (nextValue: boolean) => {
     // Optimistic update
@@ -23,9 +25,17 @@ export function BottleToggle({ username, initialValue }: BottleToggleProps) {
     setIsUpdating(true);
 
     try {
+      // Attach the bearer token like other authed calls; cookie auth still
+      // applies automatically for same-origin requests.
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(`/api/mailbox/settings?username=${encodeURIComponent(username)}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ acceptsBottles: nextValue }),
       });
 

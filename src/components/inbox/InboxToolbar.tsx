@@ -4,6 +4,7 @@ import React from "react";
 import { KeyRound } from "lucide-react";
 import { Button } from "../ui/Button";
 import { BottleToggle } from "./BottleToggle";
+import { InboxExportButton } from "./InboxExportButton";
 import { useLocale } from "@/hooks/useLocale";
 import { toBengaliDigits } from "@/lib/time";
 
@@ -67,8 +68,10 @@ export function InboxToolbar({
         </button>
       </div>
 
-      {/* Actions: Bottle Toggle and Keys Modal Button */}
+      {/* Actions: Export, Bottle Toggle and Keys Modal Button */}
       <div className="flex items-center gap-3 sm:gap-4">
+        <InboxExportButton username={username} mailboxName={username} />
+
         <BottleToggle username={username} initialValue={acceptsBottles} />
 
         <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Clock, KeyRound, AlertTriangle } from "lucide-react";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
@@ -37,6 +37,57 @@ export function LockedLetterGate({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(attemptsRemaining);
+  const [isAutoUnlocking, setIsAutoUnlocking] = useState(false);
+  const [autoUnlockFailed, setAutoUnlockFailed] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  // Latest onUnlocked without making it an effect dependency (the parent's
+  // handler identity may change across renders).
+  const onUnlockedRef = React.useRef(onUnlocked);
+  onUnlockedRef.current = onUnlocked;
+
+  // When the capsule countdown expires, revalidate against the server and
+  // unlock automatically instead of leaving the user on a dead "Expired"
+  // screen. Uses GET /api/letters/[id], which enforces unlockAt server-side.
+  useEffect(() => {
+    if (lockKind !== "capsule" || !countdown.isExpired) return;
+
+    let cancelled = false;
+    setIsAutoUnlocking(true);
+    setAutoUnlockFailed(false);
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/letters/${letterId}?username=${encodeURIComponent(username)}`
+        );
+        const json = await res.json();
+        if (cancelled) return;
+        // GET /api/letters/[id] returns apiOk({ state: "open", letter }) —
+        // the body lives at data.letter.body, NOT data.body (that shape
+        // belongs to the POST /unlock response). Reading the wrong path
+        // silently broke auto-unlock (always fell through to "Try again").
+        const body =
+          typeof json.data?.letter?.body === "string"
+            ? json.data.letter.body
+            : undefined;
+        if (json.ok && body !== undefined) {
+          onUnlockedRef.current(body);
+          return;
+        }
+      } catch {
+        // Network failure: fall through to the manual retry below.
+      }
+      if (!cancelled) {
+        setIsAutoUnlocking(false);
+        setAutoUnlockFailed(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lockKind, countdown.isExpired, letterId, username, retryNonce]);
 
   const handleRiddleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,9 +147,24 @@ export function LockedLetterGate({
             {t("gate.capsuleTimeLeft")}
           </span>
           <span className="text-2xl font-serif font-bold text-ink tracking-wide">
-            {countdown.formatted}
+            {isAutoUnlocking
+              ? locale === "bn"
+                ? "খোলা হচ্ছে…"
+                : "Unlocking…"
+              : countdown.formatted}
           </span>
         </div>
+
+        {autoUnlockFailed && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => setRetryNonce((n) => n + 1)}
+          >
+            {locale === "bn" ? "আবার চেষ্টা করুন" : "Try again"}
+          </Button>
+        )}
       </div>
     );
   }

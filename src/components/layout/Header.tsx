@@ -9,22 +9,17 @@ import { useLocale } from "@/hooks/useLocale";
 import { useSession } from "@/hooks/useSession";
 import { useCountdown } from "@/hooks/useCountdown";
 import { Scroll, Waves, KeyRound, Clock } from "lucide-react";
-import { motion } from "framer-motion";
-
-import { useReducedMotionSafe } from "@/hooks/useReducedMotionSafe";
 
 export function Header() {
   const { t } = useLocale();
   const { activeSession, activeUsername } = useSession();
-  const shouldReduceMotion = useReducedMotionSafe();
 
   const activeUser = activeUsername;
   const expiresAt = activeSession?.expiresAt || 0;
   const countdown = useCountdown(expiresAt);
 
-  const hoverPill = shouldReduceMotion ? undefined : { scale: 1.03, y: -1 };
-  const hoverAvatar = shouldReduceMotion ? undefined : { scale: 1.03 };
-  const tapEffect = shouldReduceMotion ? undefined : { scale: 0.97 };
+  // Hover/tap micro-interactions are pure CSS (motion-safe only) so that
+  // framer-motion does not ship in the global layout bundle.
 
   return (
     <header className="sticky top-0 z-40 w-full bg-canvas/90 backdrop-blur-md border-b border-edge transition-colors duration-200">
@@ -58,27 +53,19 @@ export function Header() {
         <div className="hidden md:flex items-center gap-3">
           {/* Benami Kham (Public Wall) Interactive Pill */}
           <Link href="/feed">
-            <motion.div
-              whileHover={hoverPill}
-              whileTap={tapEffect}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-edge bg-surface hover:bg-peach/30 dark:hover:bg-surface-raised text-ink text-xs font-medium shadow-sm transition-all cursor-pointer group"
-            >
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-edge bg-surface hover:bg-peach/30 dark:hover:bg-surface-raised text-ink text-xs font-medium shadow-sm transition-all motion-safe:hover:scale-[1.03] motion-safe:hover:-translate-y-[1px] motion-safe:active:scale-[0.97] cursor-pointer group">
               <Scroll size={15} strokeWidth={1.5} className="text-wax group-hover:rotate-6 transition-transform" aria-hidden="true" />
               <span>{t("nav.benamiKham")}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-wax/70 group-hover:bg-wax animate-pulse motion-reduce:animate-none" aria-hidden="true" />
-            </motion.div>
+            </div>
           </Link>
 
           {/* Bottle Drop Interactive Pill */}
           <Link href="/bottle">
-            <motion.div
-              whileHover={hoverPill}
-              whileTap={tapEffect}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-edge bg-surface hover:bg-peach/30 dark:hover:bg-surface-raised text-ink text-xs font-medium shadow-sm transition-all cursor-pointer group"
-            >
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-edge bg-surface hover:bg-peach/30 dark:hover:bg-surface-raised text-ink text-xs font-medium shadow-sm transition-all motion-safe:hover:scale-[1.03] motion-safe:hover:-translate-y-[1px] motion-safe:active:scale-[0.97] cursor-pointer group">
               <Waves size={15} strokeWidth={1.5} className="text-skymist-text group-hover:text-wax transition-colors" aria-hidden="true" />
               <span>{t("nav.driftBottle")}</span>
-            </motion.div>
+            </div>
           </Link>
         </div>
 
@@ -91,11 +78,7 @@ export function Header() {
               aria-label={t("nav.profileAria", { username: activeUser })}
               className="min-w-0"
             >
-              <motion.div
-                whileHover={hoverAvatar}
-                whileTap={tapEffect}
-                className="inline-flex items-center gap-1 sm:gap-2 px-1.5 xs:px-2 sm:px-4 py-1 sm:py-1.5 rounded-full bg-surface border border-edge text-xs font-medium text-ink shadow-sm hover:border-wax hover:shadow-md transition-all cursor-pointer min-w-0"
-              >
+              <div className="inline-flex items-center gap-1 sm:gap-2 px-1.5 xs:px-2 sm:px-4 py-1 sm:py-1.5 rounded-full bg-surface border border-edge text-xs font-medium text-ink shadow-sm hover:border-wax hover:shadow-md transition-all motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.97] cursor-pointer min-w-0">
                 <div className="w-5 h-5 rounded-full bg-wax text-[11px] font-serif font-bold text-white flex items-center justify-center shrink-0">
                   {activeUser.charAt(0).toUpperCase()}
                 </div>
@@ -109,20 +92,16 @@ export function Header() {
                   </span>
                 )}
                 <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none shrink-0" aria-hidden="true" />
-              </motion.div>
+              </div>
             </Link>
           ) : (
             /* No Session: Prominent Passcode Login Button with responsive text */
             <Link href="/recover" className="min-w-0">
-              <motion.div
-                whileHover={hoverAvatar}
-                whileTap={tapEffect}
-                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full border border-edge bg-surface hover:bg-peach/30 dark:hover:bg-surface-raised hover:border-wax text-xs font-medium text-ink-muted hover:text-ink dark:hover:text-ink-heading shadow-sm transition-all cursor-pointer min-w-0"
-              >
+              <div className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-full border border-edge bg-surface hover:bg-peach/30 dark:hover:bg-surface-raised hover:border-wax text-xs font-medium text-ink-muted hover:text-ink dark:hover:text-ink-heading shadow-sm transition-all motion-safe:hover:scale-[1.03] motion-safe:active:scale-[0.97] cursor-pointer min-w-0">
                 <KeyRound size={13} strokeWidth={1.5} className="text-wax shrink-0" aria-hidden="true" />
                 <span className="hidden sm:inline">{t("nav.loginWithPasscode")}</span>
                 <span className="sm:hidden truncate max-w-[70px]">{t("nav.loginShort")}</span>
-              </motion.div>
+              </div>
             </Link>
           )}
 

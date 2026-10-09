@@ -75,7 +75,6 @@ export function MailboxKeyCard({
         <CopyField
           value={effectivePublicUrl}
           label={t("keyCard.publicLinkLabel")}
-          helperText={t("keyCard.publicLinkHelp")}
         />
 
         {/* Private inbox link with token */}
