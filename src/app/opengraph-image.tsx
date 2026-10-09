@@ -12,125 +12,111 @@ export const size = {
 export const contentType = "image/png";
 
 // Warm postal card built from canonical design tokens (no hardcoded hex).
-// Dark backdrop keeps the cream stamp paper visually separate.
-const BACKDROP = THEME_COLORS.inkHeading.light;
-const PAPER = THEME_COLORS.surface.light;
+const CREAM = THEME_COLORS.surface.light;
+const PAPER_EDGE = THEME_COLORS.edge.light;
 const INK = THEME_COLORS.inkHeading.light;
 const INK_MUTED = THEME_COLORS.inkMuted.light;
 const PEACH = THEME_COLORS.wax.light;
 
-// Stamp paper asset is portrait 450x605; centered on the card.
-const STAMP_W = 417;
-const STAMP_H = 560;
-const STAMP_LEFT = (size.width - STAMP_W) / 2;
-const STAMP_TOP = (size.height - STAMP_H) / 2;
-
 export default async function Image() {
-  const [logoBuffer, stampBuffer] = await Promise.all([
-    readFile(join(process.cwd(), "public/logo.png")),
-    readFile(join(process.cwd(), "public/textures/stamp-paper.svg")),
-  ]);
+  const logoBuffer = await readFile(join(process.cwd(), "public/logo.png"));
   const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
-  const stampSrc = `data:image/svg+xml;base64,${stampBuffer.toString("base64")}`;
 
   return new ImageResponse(
     (
       <div
         style={{
-          background: BACKDROP,
+          background: CREAM,
           width: "100%",
           height: "100%",
           display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           position: "relative",
         }}
       >
-        {/* vertical stamp paper */}
-        <img
-          src={stampSrc}
-          width={STAMP_W}
-          height={STAMP_H}
-          style={{
-            position: "absolute",
-            left: STAMP_LEFT,
-            top: STAMP_TOP,
-          }}
-        />
-
-        {/* text on the paper */}
+        {/* paper edge frame */}
         <div
           style={{
             position: "absolute",
-            left: STAMP_LEFT,
-            top: STAMP_TOP,
-            width: STAMP_W,
-            height: STAMP_H,
+            top: 24,
+            left: 24,
+            right: 24,
+            bottom: 24,
+            border: `3px solid ${PAPER_EDGE}`,
+            borderRadius: 18,
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 48px",
+          }}
+        />
+
+        {/* main site logo */}
+        <img
+          src={logoSrc}
+          width={148}
+          height={148}
+          style={{ marginBottom: 28, borderRadius: 32 }}
+        />
+
+        {/* brand */}
+        <div
+          style={{
+            fontSize: 92,
+            fontFamily: "serif",
+            fontWeight: 700,
+            color: INK,
+            letterSpacing: "-0.02em",
+            marginBottom: 16,
           }}
         >
-          <img
-            src={logoSrc}
-            width={88}
-            height={88}
-            style={{ marginBottom: 18, borderRadius: 20 }}
+          MyChithi
+        </div>
+
+        {/* tagline */}
+        <div
+          style={{
+            fontSize: 30,
+            color: INK_MUTED,
+            textAlign: "center",
+            maxWidth: 760,
+            lineHeight: 1.45,
+            fontFamily: "serif",
+            fontStyle: "italic",
+          }}
+        >
+          Anonymous letters that vanish after reading.
+        </div>
+
+        {/* pill */}
+        <div
+          style={{
+            marginTop: 36,
+            display: "flex",
+            gap: 14,
+            alignItems: "center",
+            background: INK,
+            borderRadius: 999,
+            padding: "12px 32px",
+          }}
+        >
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: PEACH,
+            }}
           />
-          <div
+          <span
             style={{
-              fontSize: 56,
-              fontFamily: "serif",
-              fontWeight: 700,
-              color: INK,
-              letterSpacing: "-0.02em",
-              marginBottom: 12,
+              fontSize: 22,
+              color: CREAM,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
             }}
           >
-            MyChithi
-          </div>
-          <div
-            style={{
-              fontSize: 21,
-              color: INK_MUTED,
-              textAlign: "center",
-              lineHeight: 1.5,
-              fontFamily: "serif",
-              fontStyle: "italic",
-              marginBottom: 24,
-            }}
-          >
-            Anonymous letters that vanish after reading.
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              background: INK,
-              borderRadius: 999,
-              padding: "9px 24px",
-            }}
-          >
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: PEACH,
-                marginRight: 10,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 16,
-                color: PAPER,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-              }}
-            >
-              No signup · No tracking
-            </span>
-          </div>
+            No signup · No tracking
+          </span>
         </div>
       </div>
     ),
