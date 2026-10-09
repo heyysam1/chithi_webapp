@@ -26,9 +26,6 @@ export function Footer() {
             Chithi চিঠি
           </span>
           <span className="text-edge">·</span>
-          <p className="font-serif italic text-ink-muted text-center sm:text-left">
-            {t("footer.tagline")}
-          </p>
         </div>
 
         {/* Links row */}
