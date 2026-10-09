@@ -74,6 +74,27 @@ export function ExportButton({
         <span>{labels.buttonLabel}</span>
       </Button>
 
+      {/* Print-only rendering: when the user chooses "Print / Save as PDF",
+          only this letter list appears on paper — the app chrome is hidden
+          by the print stylesheet. */}
+      <div data-print-letters className="hidden print:block" aria-hidden="true">
+        <h1 className="print-title">
+          {mailboxName} — {labels.modalTitle}
+        </h1>
+        {letters.map((letter, i) => (
+          <article key={letter.id} className="print-letter">
+            <div className="print-letter-meta">
+              #{i + 1} · {letter.senderName || "Anonymous"} ·{" "}
+              {new Date(letter.createdAt).toLocaleString(
+                locale === "bn" ? "bn-BD" : "en-US",
+                { dateStyle: "medium", timeStyle: "short" }
+              )}
+            </div>
+            <div className="print-letter-body">{letter.body}</div>
+          </article>
+        ))}
+      </div>
+
       <Modal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
@@ -81,9 +102,9 @@ export function ExportButton({
         maxWidth="max-w-sm"
       >
         <div className="space-y-3">
-          {labels.modalHint && (
+          {(letters.length === 0 ? labels.emptyHint : labels.modalHint) && (
             <p className="text-xs text-ink-muted leading-relaxed">
-              {labels.modalHint}
+              {letters.length === 0 ? labels.emptyHint : labels.modalHint}
             </p>
           )}
           <Button

@@ -85,10 +85,10 @@ export function PasscodeInfoModal({ isOpen, onClose, username }: PasscodeInfoMod
             <div className="p-3.5 rounded-2xl bg-surface border border-edge space-y-1.5 text-xs text-ink">
               <div className="flex items-center gap-1.5 font-medium text-wax">
                 <Sparkles size={14} />
-                <span>Tip</span>
+                <span>{t("profile.passcodeModal.unavailableTitle")}</span>
               </div>
               <p className="text-ink-muted leading-relaxed">
-                {t("profile.passcodeModal.tip")}
+                {t("profile.passcodeModal.unavailableDesc")}
               </p>
             </div>
           )}

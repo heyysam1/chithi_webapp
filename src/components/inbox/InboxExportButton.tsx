@@ -57,6 +57,7 @@ export function InboxExportButton({
         buttonLabel: t("export.button"),
         modalTitle: t("export.title"),
         modalHint: t("export.hint"),
+        emptyHint: t("export.emptyHint"),
         downloadTxt: t("export.downloadTxt"),
         printPdf: t("export.printPdf"),
         papers: {
