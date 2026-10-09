@@ -4,6 +4,7 @@ import { keys } from "./keys";
 import { hashWithPepper, sha256, timingSafeEqual } from "./crypto";
 import { extractAuthToken, getSessionUsername } from "./auth";
 import { isPermanentMailbox } from "./mailbox";
+import { checkRateLimit } from "./ratelimit";
 import type { MailboxRecord } from "./types";
 
 /**
@@ -113,4 +114,18 @@ export async function requireAdmin(req: Request): Promise<MailboxRecord> {
   }
 
   return mailbox;
+}
+
+/**
+ * Rate limit for destructive admin actions (ban, mailbox delete/expire,
+ * letter delete, maintenance toggle): 60/min per admin identity.
+ * Single trusted user, so this only binds a compromised session.
+ * Returns true when the request may proceed, false when throttled.
+ */
+export async function checkAdminActionRateLimit(): Promise<boolean> {
+  const rl = await checkRateLimit(
+    "admin_action",
+    `admin:${getOwnerUsernameLower()}`
+  );
+  return rl.success;
 }

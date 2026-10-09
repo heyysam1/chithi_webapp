@@ -235,6 +235,8 @@ export const en = {
     fromSender: "From:",
     anonymousSender: "Anonymous",
     cancel: "Cancel",
+    deletedToast: "Letter burned permanently",
+    publishedToast: "Letter published to Benami Kham wall",
   },
   gate: {
     capsuleTitle: "Time Capsule Sealed",
@@ -266,10 +268,6 @@ export const en = {
     successTitle: "Bottle Cast into the Sea",
     successDesc: "Your letter washed ashore in a stranger's mailbox. They are reading it in the quiet of the night.",
     castAnother: "Cast another bottle",
-    authRequiredTitle: "A Mailbox is Required",
-    authRequiredSubtitle: "Before casting a message into the sea, you need an active mailbox to anchor your journey.",
-    authRequiredCreateBtn: "Create a Mailbox",
-    authRequiredLoginBtn: "Recover Existing Mailbox",
   },
   feed: {
     badge: "Public Wall",
@@ -279,6 +277,7 @@ export const en = {
     trending: "Trending",
     latest: "Latest",
     empty: "The wall is quiet tonight. No public letters yet.",
+    emptyTitle: "No public letters yet",
     loadMore: "Read more letters",
     loading: "Unfolding letters...",
   },
@@ -299,12 +298,23 @@ export const en = {
     recovering: "Verifying credentials...",
     retryAfter: "Too many attempts. Please try again in",
     successTitle: "Access Restored",
-    newPasscodeTitle: "Your new recovery passcode",
-    newPasscodeDesc: "Your old passcode no longer works. Save this new 6-digit passcode now — it is shown once and cannot be recovered if lost.",
     goToInbox: "Go to Inbox",
+    digitAria: "Digit {index}",
   },
   about: {
     title: "About Chithi · চিঠি",
+    tagline: "Quiet thoughts in a noisy world.",
+    chapters: {
+      philosophy: "The Philosophy",
+      privacy: "Privacy by Design",
+      expiry: "Hard Expiry & Redis TTL",
+      bottle: "Message in a Bottle & Plain Text",
+      safety: "Safety & Automatic Moderation",
+    },
+    cta: {
+      create: "Create Your Mailbox",
+      explore: "Explore Benami Kham",
+    },
     prose: {
       p1: "Chithi (চিঠি) was born from a desire for quiet, thoughtful, anonymous correspondence in a noisy digital world. In a culture saturated with instant messaging and performative presence, we missed the feeling of receiving a handwritten letter at night.",
       p2: "No accounts. No passwords. No email addresses. No tracking. When you create a mailbox, we generate cryptographic credentials held only in your browser. We never store raw IP addresses: identifiers are irreversibly hashed with salt.",
@@ -453,6 +463,28 @@ export const en = {
       confirmBtn: "Disconnect",
       cancelBtn: "Cancel",
     },
+    dangerZone: {
+      title: "Danger zone",
+      desc: "Permanently delete your mailbox and everything in it. This cannot be undone.",
+      deleteBtn: "Delete mailbox permanently",
+      modalTitle: "Delete your mailbox forever?",
+      modalIntro:
+        "This will permanently erase your mailbox. There is no recovery.",
+      deletedTitle: "What gets deleted",
+      deletedItems:
+        "Your mailbox and username link · All letters you received · Drafts on this device · Your bottle-pool entry",
+      staysTitle: "What stays",
+      staysItems:
+        "Letters you sent remain in their recipients' inboxes · Anonymous Benami Kham wall posts stay (they can't be traced back to you)",
+      passcodeLabel: "Type your 6-digit passcode to confirm",
+      passcodePlaceholder: "6-digit passcode",
+      irreversible: "This action is irreversible.",
+      confirmBtn: "Yes, delete everything",
+      cancelBtn: "Keep my mailbox",
+      wrongPasscode: "Wrong passcode — nothing was deleted.",
+      failed: "Something went wrong. Nothing was deleted.",
+      deleting: "Deleting…",
+    },
     passcodeModal: {
       title: "Recovery Passcode Security",
       desc: "For zero-knowledge privacy, your 6-digit recovery passcode was displayed only once when sealing your mailbox and is stored on our server as a one-way salted cryptographic hash.",
@@ -500,7 +532,20 @@ export const en = {
     fromNamed: "From: {name}",
     fromAnonymous: "Anonymous",
   },
+  writeLetter: {
+    title: "Writing to @{username}",
+  },
+  toast: {
+    close: "Close notification",
+  },
+  chart: {
+    activity: "Activity chart",
+    bars: "Bar chart",
+  },
   admin: {
+    page: {
+      title: "Chithi Admin",
+    },
     login: {
       kicker: "Restricted area",
       title: "Admin Login",
@@ -572,6 +617,7 @@ export const en = {
       anonTitle: "Anonymous letters",
       anonSub: "Last 30 days",
       noData: "No bottle data yet.",
+      filter: "Filter bottles",
     },
     mailboxes: {
       loadError: "Failed to load mailboxes",
@@ -618,6 +664,7 @@ export const en = {
       extend: "Expiry extensions",
       export: "Inbox exports",
       reaction: "Reactions",
+      filter: "Filter features",
     },
     reports: {
       title: "Abuse reports",
@@ -683,6 +730,14 @@ export const en = {
       banReasonPh: "Why is this being banned?",
       banSubmit: "Ban",
       banNote: "IP bans take effect immediately. There is no active-ban list yet.",
+      banConfirmTitle: "Ban this identifier?",
+      banConfirmDesc: "The ban takes effect immediately. Double-check the identifier before confirming.",
+      banListTitle: "Active bans",
+      banListEmpty: "No active bans.",
+      banListError: "Could not load bans.",
+      banTtlLeft: "Expires in",
+      banRevoke: "Revoke",
+      banRevoked: "Ban revoked.",
       banDone: "Ban applied.",
       monitorTitle: "Report volume",
       monitorLabel: "Pending reports",
