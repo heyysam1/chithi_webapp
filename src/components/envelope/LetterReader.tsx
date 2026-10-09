@@ -7,9 +7,15 @@ import { BurnTimer } from "./BurnTimer";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { IconButton } from "../ui/IconButton";
-import { LetterRecord, OpenLetter } from "@/lib/types";
+import { LetterRecord, OpenLetter, LetterSummary } from "@/lib/types";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
+import { useAccessToken } from "@/hooks/useAccessToken";
+import { ReplyButton } from "./ReplyButton";
+import { ThreadView } from "./ThreadView";
+
+/** Max messages per reply thread (mirrors MAX_THREAD_DEPTH = 5 server-side). */
+const MAX_THREAD_MESSAGES = 6;
 
 export interface LetterReaderProps {
   letter: LetterRecord | OpenLetter | null;
@@ -32,13 +38,46 @@ export function LetterReader({
   onReact,
   onDownloadPostcard,
   onReport,
+  username,
 }: LetterReaderProps) {
   const { t } = useLocale();
   const { showToast } = useToast();
+  const { token } = useAccessToken(username);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [thread, setThread] = useState<LetterSummary[] | null>(null);
+
+  // Load the reply thread when a letter is opened.
+  useEffect(() => {
+    if (!isOpen || !letter) {
+      setThread(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(
+          `/api/letters/${letter.id}/thread?username=${encodeURIComponent(username.toLowerCase())}`,
+          { headers }
+        );
+        const json = await res.json();
+        if (!cancelled && json.ok && Array.isArray(json.data?.thread)) {
+          setThread(json.data.thread);
+        }
+      } catch {
+        if (!cancelled) setThread(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, letter, username, token]);
+
+  const canReply = thread === null || thread.length < MAX_THREAD_MESSAGES;
 
   const readerRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -199,6 +238,21 @@ export function LetterReader({
               stampSeed={letter.id}
               variant="reader"
             >
+              {/* Reply thread context (only when this letter is part of a thread) */}
+              {thread && thread.length > 1 && (
+                <div className="mb-6">
+                  <ThreadView
+                    thread={thread}
+                    currentId={letter.id}
+                    labels={{
+                      title: t("reader.threadTitle"),
+                      youAreHere: t("reader.threadYouAreHere"),
+                      anonymousLabel: t("reader.anonymousSender"),
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Body */}
               <div className="whitespace-pre-wrap break-words min-h-[220px]">
                 {letter.body}
@@ -292,6 +346,14 @@ export function LetterReader({
                 >
                   <Share2 size={18} strokeWidth={1.5} aria-hidden="true" />
                 </IconButton>
+              )}
+
+              {canReply && (
+                <ReplyButton
+                  username={username}
+                  letterId={letter.id}
+                  label={t("reader.actionReply")}
+                />
               )}
 
               <IconButton

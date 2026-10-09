@@ -7,6 +7,7 @@ import { PageShell } from "@/components/layout/PageShell";
 import { ProfileHeaderCard } from "@/components/profile/ProfileHeaderCard";
 import { ProfileStatsGrid } from "@/components/profile/ProfileStatsGrid";
 import { PasscodeInfoModal } from "@/components/profile/PasscodeInfoModal";
+import { ExtendExpiryCard } from "@/components/profile/ExtendExpiryCard";
 import { CopyField } from "@/components/ui/CopyField";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -31,6 +32,9 @@ interface ProfileData {
   username: string;
   gender: string;
   expiresAt: number;
+  createdAt: number;
+  extensionsUsed: number;
+  isPermanent?: boolean;
   unreadCount: number;
   totalEnvelopeCount: number;
   acceptsBottles: boolean;
@@ -380,13 +384,31 @@ export default function ProfilePage() {
                 <h3 className="text-base font-serif font-bold text-ink">
                   {t("profile.publicUrl.title")}
                 </h3>
-                <p className="text-xs text-ink-muted leading-relaxed">
-                  {t("profile.publicUrl.helper")}
-                </p>
               </div>
 
               <CopyField value={publicUrl} />
             </div>
+
+            {/* 4b. Mailbox Expiry Extension (hides itself when ineligible) */}
+            <ExtendExpiryCard
+              username={profileData.username}
+              expiresAt={profileData.expiresAt}
+              createdAt={profileData.createdAt}
+              extensionsUsed={profileData.extensionsUsed}
+              isPermanent={profileData.isPermanent === true}
+              token={token}
+              onExtended={(nextExpiresAt, nextExtensionsUsed) =>
+                setProfileData((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        expiresAt: nextExpiresAt,
+                        extensionsUsed: nextExtensionsUsed,
+                      }
+                    : prev
+                )
+              }
+            />
 
             {/* 5. Bottom Action Controls Section (Passcode Info & Disconnect Mailbox) */}
             <div className="p-6 sm:p-7 rounded-3xl bg-surface border border-edge shadow-xl space-y-4 transition-colors">
