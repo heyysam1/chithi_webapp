@@ -52,7 +52,7 @@ export function FeedGrid({
     return (
       <div className="py-12">
         <EmptyState
-          title={t("feed.title")}
+          title={t("feed.emptyTitle")}
           description={t("feed.empty")}
         />
       </div>

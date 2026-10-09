@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from "react";
 import { Clock, HeartCrack } from "lucide-react";
 import { PaperStyleId, StampId, FontId } from "@/lib/types";
 import { PAPERS, FONTS, getDeterministicRotation } from "@/lib/paper";
+import { LETTER_BODY_MAX } from "@/lib/constants";
 
 export interface PaperSurfaceProps {
   paper: PaperStyleId;
@@ -132,6 +133,7 @@ export function PaperSurface({
             onChange={(e) => onChange?.(e.target.value)}
             placeholder={placeholder}
             rows={8}
+            maxLength={LETTER_BODY_MAX}
             className="w-full bg-transparent border-0 outline-none resize-none overflow-hidden placeholder:text-current/50 text-inherit focus:ring-0 focus:outline-none p-0 selection:bg-gold/30"
             style={{
               fontFamily: resolvedFontFamily,

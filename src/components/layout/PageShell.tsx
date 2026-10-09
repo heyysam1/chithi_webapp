@@ -11,7 +11,7 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className="relative min-h-screen overflow-x-hidden flex flex-col bg-canvas text-ink transition-colors duration-200">
+    <div className="relative min-h-screen overflow-x-clip flex flex-col bg-canvas text-ink transition-colors duration-200">
       {/* Skip link for accessibility */}
       <a
         href="#main-content"

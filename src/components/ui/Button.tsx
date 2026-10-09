@@ -36,7 +36,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizeStyles = {
-      sm: "text-xs py-1.5 px-3.5 min-h-[36px]",
+      sm: "text-xs py-1.5 px-3.5 min-h-[44px]",
       md: "text-sm py-2 px-5 min-h-[44px]",
       lg: "text-base py-3 px-6 min-h-[48px]",
     };
@@ -45,6 +45,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
+        aria-busy={isLoading || undefined}
         className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
         {...props}
       >

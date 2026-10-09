@@ -164,7 +164,7 @@ export function LetterReader({
       await onDelete(letter.id);
       setConfirmDelete(false);
       onClose();
-      showToast("Letter burned permanently", "success");
+      showToast(t("reader.deletedToast"), "success");
     } catch {
       showToast(t("errors.generic"), "error");
     } finally {
@@ -177,7 +177,7 @@ export function LetterReader({
     try {
       await onPublish(letter.id);
       setConfirmPublish(false);
-      showToast("Letter published to Benami Kham wall", "success");
+      showToast(t("reader.publishedToast"), "success");
     } catch (err: unknown) {
       const error = err as { message?: string };
       showToast(t(error?.message || "errors.generic"), "error");

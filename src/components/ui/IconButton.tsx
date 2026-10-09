@@ -20,7 +20,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center transition-colors duration-150 rounded-btn min-w-[44px] min-h-[44px] select-none disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-wax focus-visible:outline-offset-2";
+      "inline-flex items-center justify-center transition-colors duration-150 rounded-full min-w-[44px] min-h-[44px] select-none disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-wax focus-visible:outline-offset-2";
 
     const variantStyles = {
       ghost:
@@ -34,7 +34,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
     };
 
     const sizeStyles = {
-      sm: "w-9 h-9 min-w-[36px] min-h-[36px] p-1.5",
+      sm: "w-11 h-11 p-1.5",
       md: "w-11 h-11 min-w-[44px] min-h-[44px] p-2",
       lg: "w-12 h-12 min-w-[48px] min-h-[48px] p-2.5",
     };

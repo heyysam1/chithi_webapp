@@ -16,7 +16,7 @@ export function LocaleToggle() {
         type="button"
         aria-pressed={locale === "en"}
         onClick={() => setLocale("en")}
-        className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 transition-all rounded-full select-none text-[10px] sm:text-[11px] ${
+        className={`min-h-[44px] min-w-[44px] px-2.5 flex items-center justify-center transition-all rounded-full select-none text-[11px] ${
           locale === "en"
             ? "bg-peach dark:bg-surface-raised text-ink dark:text-ink-heading font-bold shadow-xs"
             : "text-ink-muted hover:text-ink dark:hover:text-ink-heading"
@@ -29,7 +29,7 @@ export function LocaleToggle() {
         type="button"
         aria-pressed={locale === "bn"}
         onClick={() => setLocale("bn")}
-        className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 font-serif transition-all rounded-full select-none text-[10px] sm:text-[11px] ${
+        className={`min-h-[44px] min-w-[44px] px-2.5 flex items-center justify-center font-serif transition-all rounded-full select-none text-[11px] ${
           locale === "bn"
             ? "bg-peach dark:bg-surface-raised text-ink dark:text-ink-heading font-bold shadow-xs"
             : "text-ink-muted hover:text-ink dark:hover:text-ink-heading"

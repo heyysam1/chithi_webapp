@@ -58,12 +58,12 @@ export function FontPicker({ selected, onChange }: FontPickerProps) {
               }`}
             >
               <span
-                className="text-xs sm:text-sm leading-snug mb-1 block font-medium truncate"
+                className="text-xs sm:text-sm leading-snug mb-1 block font-medium break-words"
                 style={{ fontFamily: `${f.fontVar}` }}
               >
                 {f.sample}
               </span>
-              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider block truncate text-ink-muted">
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider block break-words text-ink-muted">
                 {getFontCategory(f, locale)}
               </span>
             </button>
