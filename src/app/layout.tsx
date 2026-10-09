@@ -22,9 +22,9 @@ export const viewport: Viewport = {
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || env.NEXT_PUBLIC_APP_URL;
 
-const siteTitle = "MyChithi — Anonymous Private Letters";
+const siteTitle = "MyChithi - Anonymous Private Letters";
 const siteDescription =
-  "Send anonymous letters that vanish after reading. No signup, no tracking — just your words, in Bangla or English.";
+  "Send anonymous letters that vanish after reading. No signup, no tracking - just your words, in Bangla or English.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),

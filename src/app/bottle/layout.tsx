@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Message in a Bottle",
   description:
-    "Cast a message in a bottle — your anonymous letter drifts to a stranger's inbox. No signup, no tracking.",
+    "Cast a message in a bottle - your anonymous letter drifts to a stranger's inbox. No signup, no tracking.",
   alternates: { canonical: "/bottle" },
 };
 
