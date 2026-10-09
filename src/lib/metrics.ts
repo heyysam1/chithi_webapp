@@ -62,10 +62,6 @@ export function todayStr(): string {
   }).format(new Date());
 }
 
-export function metricDayKey(metric: string, dateStr: string): string {
-  return keys.metricDay(metric, dateStr);
-}
-
 /**
  * Increment today's counter for a metric. Never throws, never rejects —
  * safe to call fire-and-forget from request handlers.

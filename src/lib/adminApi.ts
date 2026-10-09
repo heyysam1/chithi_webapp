@@ -166,16 +166,3 @@ export function daysAgoISO(n: number): string {
 export function todayISO(): string {
   return toISODate(new Date());
 }
-
-export function formatDateTime(ts: number, locale: string): string {
-  return new Date(ts).toLocaleString(locale === "bn" ? "bn-BD" : "en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-export function formatDate(ts: number, locale: string): string {
-  return new Date(ts).toLocaleDateString(locale === "bn" ? "bn-BD" : "en-US", {
-    dateStyle: "medium",
-  });
-}

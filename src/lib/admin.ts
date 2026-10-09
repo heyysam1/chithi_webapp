@@ -1,7 +1,7 @@
 import { env } from "./env";
 import { getRedis } from "./redis";
 import { keys } from "./keys";
-import { hashWithPepper, sha256, timingSafeEqual } from "./crypto";
+import { hashWithPepper, timingSafeEqual } from "./crypto";
 import { extractAuthToken, getSessionUsername } from "./auth";
 import { isPermanentMailbox } from "./mailbox";
 import { checkRateLimit } from "./ratelimit";
@@ -48,22 +48,6 @@ export function isAdminConfigured(): boolean {
 /** Lowercased configured owner username ("" when not configured). */
 export function getOwnerUsernameLower(): string {
   return (env.PERMANENT_MAILBOX_USERNAME || "").trim().toLowerCase();
-}
-
-/**
- * Side-effect-free owner passcode check. Uses the same timing-safe
- * SHA-256 comparison as the recovery flow (`recoverPermanentMailbox`).
- * Returns false (never throws) on any mismatch — no user enumeration.
- */
-export async function verifyOwnerPasscode(
-  username: string,
-  passcode: string
-): Promise<boolean> {
-  if (!isAdminConfigured()) return false;
-  if (username.trim().toLowerCase() !== getOwnerUsernameLower()) return false;
-  const expected = (env.PERMANENT_MAILBOX_PASSCODE || "").trim();
-  if (!expected) return false;
-  return timingSafeEqual(sha256(passcode), sha256(expected));
 }
 
 /**
