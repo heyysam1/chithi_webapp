@@ -453,8 +453,8 @@ export const en = {
       close: "Understood",
       passcodeLabel: "Your 6-digit passcode",
       tapToCopy: "Tap to copy",
-      unavailableTitle: "Not available in this tab",
-      unavailableDesc: "Your passcode is only shown in the browser tab where you created or recovered this mailbox. To see it here, recover your mailbox again — you'll receive a fresh passcode.",
+      unavailableTitle: "No passcode saved here",
+      unavailableDesc: "No passcode is saved in this browser yet. It gets saved automatically when you create or recover a mailbox on this device.",
     },
     extend: {
       title: "Extend Mailbox Expiry",
