@@ -41,9 +41,6 @@ export const metadata: Metadata = {
     url: "/",
     images: ["/logo.png"],
   },
-  verification: {
-    google: "eSpSLv9-SoUUBOvdKWuzJmXA03fnEANhHu1fs7pHdZI",
-  },
 };
 
 export default async function RootLayout({
