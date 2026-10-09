@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { THEME_COLORS } from "@/lib/theme";
 
 export const runtime = "nodejs";
@@ -14,10 +16,12 @@ const CREAM = THEME_COLORS.surface.light;
 const PAPER_EDGE = THEME_COLORS.edge.light;
 const INK = THEME_COLORS.inkHeading.light;
 const INK_MUTED = THEME_COLORS.inkMuted.light;
-const WAX = THEME_COLORS.dangerText.light;
 const PEACH = THEME_COLORS.wax.light;
 
 export default async function Image() {
+  const logoBuffer = await readFile(join(process.cwd(), "public/logo.png"));
+  const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -46,67 +50,26 @@ export default async function Image() {
           }}
         />
 
-        {/* wax seal */}
-        <div
-          style={{
-            width: 120,
-            height: 120,
-            borderRadius: "50%",
-            background: WAX,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 28,
-            boxShadow: "0 6px 24px rgba(168,58,42,0.35)",
-          }}
-        >
-          <div
-            style={{
-              width: 88,
-              height: 88,
-              borderRadius: "50%",
-              border: `2px solid ${CREAM}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 44,
-              color: CREAM,
-              fontFamily: "serif",
-            }}
-          >
-            চি
-          </div>
-        </div>
+        {/* main site logo */}
+        <img
+          src={logoSrc}
+          width={148}
+          height={148}
+          style={{ marginBottom: 28, borderRadius: 32 }}
+        />
 
         {/* brand */}
         <div
           style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 20,
+            fontSize: 92,
+            fontFamily: "serif",
+            fontWeight: 700,
+            color: INK,
+            letterSpacing: "-0.02em",
             marginBottom: 16,
           }}
         >
-          <span
-            style={{
-              fontSize: 92,
-              fontFamily: "serif",
-              fontWeight: 700,
-              color: INK,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            MyChithi
-          </span>
-          <span
-            style={{
-              fontSize: 56,
-              fontFamily: "serif",
-              color: WAX,
-            }}
-          >
-            চিঠি
-          </span>
+          MyChithi
         </div>
 
         {/* tagline */}
