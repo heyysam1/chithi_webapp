@@ -11,6 +11,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSession } from "@/hooks/useSession";
 import { KeyRound, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { savePasscode } from "@/lib/passcodeStorage";
 
 function RecoverForm() {
   const router = useRouter();
@@ -112,10 +113,7 @@ function RecoverForm() {
         // Do NOT redirect yet: the server rotated the passcode, and the new
         // one is shown only once. Let the user save it first.
         if (typeof window !== "undefined" && json.data.recoveryPasscode) {
-          sessionStorage.setItem(
-            `chithi:passcode:${String(json.data.username).toLowerCase()}`,
-            json.data.recoveryPasscode
-          );
+          savePasscode(String(json.data.username), json.data.recoveryPasscode);
         }
         setRecovered({
           username: json.data.username,

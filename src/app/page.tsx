@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
 import { useCountdown } from "@/hooks/useCountdown";
+import { savePasscode } from "@/lib/passcodeStorage";
 import { DurationKey, Gender } from "@/lib/types";
 import { DURATIONS, USERNAME_REGEX } from "@/lib/constants";
 import {
@@ -217,7 +218,7 @@ export default function HomePage() {
         if (typeof window !== "undefined") {
           localStorage.setItem(`chithi:token:${created.username.toLowerCase()}`, created.accessToken);
           localStorage.setItem("chithi:active", created.username.toLowerCase());
-          sessionStorage.setItem(`chithi:passcode:${created.username.toLowerCase()}`, created.recoveryPasscode);
+          savePasscode(created.username, created.recoveryPasscode);
         }
         refreshSession().catch(() => {});
         router.push(`/inbox/${created.username}?key=${encodeURIComponent(created.accessToken)}`);

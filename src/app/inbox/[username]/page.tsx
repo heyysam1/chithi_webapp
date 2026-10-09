@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { LetterRecord, LetterSummary, OpenLetter } from "@/lib/types";
+import { readOneTimePasscode, clearOneTimePasscode } from "@/lib/passcodeStorage";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useToast } from "@/hooks/useToast";
 import { useLocale } from "@/hooks/useLocale";
@@ -61,7 +62,7 @@ export default function InboxPage(props: {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = sessionStorage.getItem(`chithi:passcode:${usernameLower}`);
+      const stored = readOneTimePasscode(usernameLower);
       if (stored) {
         setCreatedPasscode(stored);
         setIsKeyCardOpen(true);
@@ -696,7 +697,7 @@ export default function InboxPage(props: {
         onClose={() => {
           setIsKeyCardOpen(false);
           if (typeof window !== "undefined") {
-            sessionStorage.removeItem(`chithi:passcode:${usernameLower}`);
+            clearOneTimePasscode(usernameLower);
           }
         }}
         maxWidth="max-w-xl"

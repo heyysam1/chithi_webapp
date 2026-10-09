@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
+import { readPasscode } from "@/lib/passcodeStorage";
 import { Lock, Sparkles, Copy } from "lucide-react";
 
 export interface PasscodeInfoModalProps {
@@ -18,17 +19,13 @@ export function PasscodeInfoModal({ isOpen, onClose, username }: PasscodeInfoMod
   const { showToast } = useToast();
   const [passcode, setPasscode] = useState<string | null>(null);
 
-  // The passcode lives only in this browser's session storage (the server
-  // keeps just a one-way hash). Read it when the modal opens.
+  // The passcode lives only in this browser (the server keeps just a
+  // one-way hash). Read the persistent copy when the modal opens.
   useEffect(() => {
     if (isOpen && username) {
-      try {
-        setPasscode(
-          sessionStorage.getItem(`chithi:passcode:${username.toLowerCase()}`)
-        );
-      } catch {
-        setPasscode(null);
-      }
+      setPasscode(readPasscode(username));
+    } else if (!isOpen) {
+      setPasscode(null);
     }
   }, [isOpen, username]);
 
