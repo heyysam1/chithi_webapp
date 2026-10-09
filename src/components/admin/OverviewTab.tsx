@@ -259,13 +259,13 @@ export function OverviewTab() {
             {chartError}
           </p>
         ) : chartLoading ? (
-          <Skeleton className="h-[260px] w-full" />
+          <Skeleton className="h-[160px] w-full" />
         ) : (
           <div className="overflow-x-auto">
             <div className="min-w-[600px]">
               <AreaChart
                 points={points}
-                height={260}
+                height={160}
                 emptyLabel={t("admin.overview.noData")}
               />
             </div>

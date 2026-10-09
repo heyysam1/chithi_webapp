@@ -88,7 +88,7 @@ export default function AboutPage() {
               height={32}
               className="w-8 h-8 rounded-full object-cover border border-edge"
             />
-            <span className="text-xs font-medium">Mohammed Sami</span>
+            <span className="text-xs font-medium">{t("about.developerLink")}</span>
             <span aria-hidden="true" className="text-xs">
               →
             </span>

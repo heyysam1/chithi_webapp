@@ -35,7 +35,7 @@ export function InboxToolbar({
     locale === "bn" ? toBengaliDigits(totalCount) : totalCount;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 p-4 border border-edge rounded-3xl bg-canvas dark:bg-surface shadow-[0_12px_32px_-8px_rgba(78,59,44,0.06)] dark:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)] select-none transition-colors">
+    <div className="flex flex-wrap items-center justify-between gap-3 p-3 border border-edge rounded-3xl bg-canvas dark:bg-surface shadow-[0_12px_32px_-8px_rgba(78,59,44,0.06)] dark:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)] select-none transition-colors">
       {/* Interactive Filter Counters */}
       <div className="flex items-center gap-2 text-xs font-mono">
         <button
@@ -69,7 +69,7 @@ export function InboxToolbar({
       </div>
 
       {/* Actions: Export, Bottle Toggle and Keys Modal Button */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
         <InboxExportButton username={username} mailboxName={username} />
 
         <BottleToggle username={username} initialValue={acceptsBottles} />

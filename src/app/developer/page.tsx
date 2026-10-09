@@ -27,11 +27,8 @@ export default function DeveloperPage() {
         />
         <div className="space-y-2">
           <h1 className="text-2xl font-serif font-bold text-ink">
-            {t("developer.title")}
-          </h1>
-          <p className="text-lg font-serif font-semibold text-ink">
             Mohammed Sami
-          </p>
+          </h1>
           <p className="text-sm font-serif italic text-wax-dim">
             {t("developer.tagline")}
           </p>

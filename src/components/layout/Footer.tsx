@@ -23,7 +23,7 @@ export function Footer() {
             />
           </div>
           <span className="font-serif font-bold text-ink dark:text-ink-heading">
-            Chithi চিঠি
+            Chithi
           </span>
           <span className="text-edge">·</span>
         </div>

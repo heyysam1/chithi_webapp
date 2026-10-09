@@ -383,19 +383,19 @@ export default function HomePage() {
               </div>
 
               <div className="space-y-3 max-w-xl">
-                <div className="relative flex items-center">
-                  <span className="absolute left-4 text-xs font-mono text-ink-muted select-none pointer-events-none">
+                <div className="flex items-center w-full min-h-[44px] pl-4 pr-4 py-2.5 text-base bg-surface-raised text-ink rounded-full border border-edge hover:border-wax transition-colors duration-150 shadow-sm focus-within:border-wax focus-within:ring-1 focus-within:ring-wax">
+                  <span className="text-xs font-mono text-ink-muted select-none pointer-events-none shrink-0">
                     {domainPrefix}/
                   </span>
-                  <Input
+                  <input
                     value={searchUsername}
                     onChange={(e) => setSearchUsername(e.target.value.replace(/\s+/g, ""))}
                     placeholder="username"
                     aria-label="Recipient username"
                     maxLength={20}
-                    className="pl-28 rounded-full"
+                    className="flex-1 min-w-0 bg-transparent px-1 text-ink placeholder:text-ink-faint focus:outline-none"
                   />
-                  <div className="absolute right-4 text-ink-muted">
+                  <div className="text-ink-muted shrink-0 flex items-center">
                     {searchStatus === "checking" && (
                       <span className="text-xs font-mono animate-pulse text-wax">...</span>
                     )}
@@ -776,19 +776,19 @@ export default function HomePage() {
                             <label htmlFor="send-recipient" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                               {locale === "bn" ? "প্রাপকের ডাকবাক্স" : "Recipient Username"}
                             </label>
-                            <div className="relative flex items-center">
-                              <span className="absolute left-4 text-xs font-mono text-ink-muted select-none pointer-events-none">
+                            <div className="flex items-center w-full min-h-[44px] pl-4 pr-4 py-2.5 text-base bg-surface-raised text-ink rounded-full border border-edge hover:border-wax transition-colors duration-150 shadow-sm focus-within:border-wax focus-within:ring-1 focus-within:ring-wax">
+                              <span className="text-xs font-mono text-ink-muted select-none pointer-events-none shrink-0">
                                 {domainPrefix}/
                               </span>
-                              <Input
+                              <input
                                 id="send-recipient"
                                 value={searchUsername}
                                 onChange={(e) => setSearchUsername(e.target.value.replace(/\s+/g, ""))}
                                 placeholder="username"
                                 maxLength={20}
-                                className="pl-28 rounded-full"
+                                className="flex-1 min-w-0 bg-transparent px-1 text-ink placeholder:text-ink-faint focus:outline-none"
                               />
-                              <div className="absolute right-4 text-ink-muted">
+                              <div className="text-ink-muted shrink-0 flex items-center">
                                 {searchStatus === "checking" && (
                                   <span className="text-xs font-mono animate-pulse text-wax">...</span>
                                 )}
