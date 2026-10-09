@@ -3,6 +3,7 @@ import { ReactFeedSchema } from "@/lib/schemas";
 import { reactToFeedItem } from "@/lib/feed";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, getViewerHash, parseJsonBody, rateLimitHeaders } from "@/lib/api";
+import { incrMetric } from "@/lib/metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,9 @@ export async function POST(
 
     const input = await parseJsonBody(req, ReactFeedSchema);
     const result = await reactToFeedItem(id, input.reaction, viewerHash);
+
+    // Aggregate metric for the admin dashboard (fire-and-forget).
+    void incrMetric("feat_reaction");
 
     return apiOk(result);
   } catch (error) {

@@ -4,6 +4,7 @@ import { sendBottle } from "@/lib/bottle";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, getViewerHash, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 import { getSessionUsername } from "@/lib/auth";
+import { incrMetric } from "@/lib/metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,10 @@ export async function POST(req: NextRequest) {
     const senderUsername = resolveBottleSender(req, input.senderUsername);
 
     const result = await sendBottle(input, viewerHash, senderUsername);
+
+    // Aggregate metric for the admin dashboard (fire-and-forget).
+    void incrMetric("bottles_sent");
+
     return apiOk(result);
   } catch (error) {
     if (error instanceof ApiError) {

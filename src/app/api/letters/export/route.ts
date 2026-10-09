@@ -3,6 +3,7 @@ import { getLettersForExport } from "@/lib/letters";
 import { getSessionUsername, requireMailboxOwner } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, rateLimitHeaders } from "@/lib/api";
+import { incrMetric } from "@/lib/metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
 
     const { mailbox } = await requireMailboxOwner(req, username);
     const letters = await getLettersForExport(mailbox.usernameLower);
+
+    // Counts export-dialog opens (the dialog fetches once when opened).
+    void incrMetric("feat_export");
 
     return apiOk({ letters });
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { ReactLetterSchema } from "@/lib/schemas";
 import { reactToLetter } from "@/lib/letters";
 import { requireMailboxOwner } from "@/lib/auth";
+import { incrMetric } from "@/lib/metrics";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 
@@ -33,6 +34,10 @@ export async function POST(
     const input = await parseJsonBody(req, ReactLetterSchema);
 
     const result = await reactToLetter(mailbox.usernameLower, id, input.reaction);
+
+    // Aggregate metric for the admin dashboard (fire-and-forget).
+    void incrMetric("feat_reaction");
+
     return apiOk(result);
   } catch (error) {
     if (error instanceof ApiError) {

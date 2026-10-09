@@ -6,6 +6,7 @@ import { apiOk, apiErr, ApiError, getRateKey, getViewerHash, parseJsonBody, rate
 import { getRedis } from "@/lib/redis";
 import { keys } from "@/lib/keys";
 import { hashWithPepper, timingSafeEqual } from "@/lib/crypto";
+import { incrMetric } from "@/lib/metrics";
 import { MailboxRecord } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -67,6 +68,16 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await sendLetter(input, viewerHash);
+
+    // Aggregate metrics for the admin dashboard — fire-and-forget, never
+    // affects the response.
+    void incrMetric("letters_sent");
+    if (!input.senderName) void incrMetric("anonymous_letters");
+    if (input.scheduledFor) void incrMetric("feat_scheduled");
+    if (input.mode.kind === "capsule") void incrMetric("feat_capsule");
+    else if (input.mode.kind === "riddle") void incrMetric("feat_riddle");
+    if (input.burnAfterReading) void incrMetric("feat_burn");
+
     return apiOk(result);
   } catch (error) {
     if (error instanceof ApiError) {

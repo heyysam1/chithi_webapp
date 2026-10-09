@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     // Permanent owner mailbox (env-configured): same endpoint, same response
     // shape and session issuance as normal recovery — just a different
     // credential check and no passcode rotation.
-    const recovered = isPermanentMailbox(usernameLower)
+    const isPermanent = isPermanentMailbox(usernameLower);
+    const recovered = isPermanent
       ? await recoverPermanentMailbox(input)
       : await recoverMailbox(input);
 
@@ -44,8 +45,10 @@ export async function POST(req: NextRequest) {
       username: recovered.username,
       accessToken: recovered.accessToken,
       // The recovery passcode is single-use and was rotated by recoverMailbox;
-      // the client must display the new passcode to the user.
+      // the client must display the new passcode to the user. The permanent
+      // mailbox never rotates its passcode, so there is nothing new to show.
       recoveryPasscode: recovered.recoveryPasscode,
+      passcodeRotated: !isPermanent,
     });
 
     // Update session cookie with rotated access token

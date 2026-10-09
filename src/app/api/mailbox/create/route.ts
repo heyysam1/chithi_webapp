@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 import { env } from "@/lib/env";
 import { DURATIONS } from "@/lib/constants";
+import { incrMetric } from "@/lib/metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export async function POST(req: NextRequest) {
     }
 
     const created = await createMailbox(input);
+
+    // Aggregate metric for the admin dashboard (fire-and-forget).
+    void incrMetric("mailboxes_created");
 
     const proto = req.headers.get("x-forwarded-proto") || "https";
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host");

@@ -5,6 +5,7 @@ import { extendMailboxExpiry } from "@/lib/mailbox";
 import { requireMailboxOwner } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
+import { incrMetric } from "@/lib/metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,10 @@ export async function POST(req: NextRequest) {
     const input = await parseJsonBody(req, ExtendMailboxSchema);
 
     const result = await extendMailboxExpiry(mailbox, EXTEND_DURATIONS[input.durationKey]);
+
+    // Aggregate metric for the admin dashboard (fire-and-forget).
+    void incrMetric("feat_extend");
+
     return apiOk(result);
   } catch (error) {
     if (error instanceof ApiError) {
