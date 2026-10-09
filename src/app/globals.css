@@ -292,27 +292,55 @@ nextjs-portal,
 }
 
 /* ---- Inbox export: clean print output -------------------------------------
-   Hides app chrome (header/footer/nav/buttons) when printing, so the
-   inbox page prints as a plain letter list. Elements can opt out of
-   printing individually with [data-no-print]. */
+   When printing from the export dialog, ONLY the letter list (rendered in
+   the [data-print-letters] container) appears on paper. Everything else —
+   header, footer, nav, buttons, cards — is hidden via visibility so the
+   PDF contains just the letters. */
 @media print {
-  header,
-  footer,
-  nav,
-  button,
-  [data-no-print] {
-    display: none !important;
+  body * {
+    visibility: hidden;
   }
-
-  body {
+  [data-print-letters],
+  [data-print-letters] * {
+    visibility: visible;
+  }
+  [data-print-letters] {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
     background: #ffffff !important;
     color: #000000 !important;
+    padding: 24px;
   }
-
-  * {
+  [data-print-letters] * {
     box-shadow: none !important;
     text-shadow: none !important;
     animation: none !important;
     transition: none !important;
+  }
+  .print-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #000000 !important;
+  }
+  .print-letter {
+    break-inside: avoid;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #cccccc;
+  }
+  .print-letter-meta {
+    font-size: 12px;
+    color: #555555 !important;
+    margin-bottom: 8px;
+  }
+  .print-letter-body {
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: #000000 !important;
   }
 }

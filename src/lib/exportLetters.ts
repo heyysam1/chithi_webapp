@@ -105,6 +105,7 @@ export interface ExportButtonLabels {
   buttonLabel: string;
   modalTitle: string;
   modalHint?: string;
+  emptyHint?: string;
   downloadTxt: string;
   printPdf: string;
   papers: Record<PaperStyleId, string>;

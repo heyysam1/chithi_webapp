@@ -204,7 +204,8 @@ export const en = {
   export: {
     button: "Export",
     title: "Export letters",
-    hint: "Download all letters as a text file, or print this page.",
+    hint: "Download all letters as a text file, or print just the letters as PDF.",
+    emptyHint: "No letters yet — nothing to export.",
     downloadTxt: "Download as .txt",
     printPdf: "Print / Save as PDF",
   },
@@ -449,10 +450,11 @@ export const en = {
     passcodeModal: {
       title: "Recovery Passcode Security",
       desc: "For zero-knowledge privacy, your 6-digit recovery passcode was displayed only once when sealing your mailbox and is stored on our server as a one-way salted cryptographic hash.",
-      tip: "If you need to log in from another device, use the passcode you wrote down during creation. If you lost it, you can keep using this active session until the mailbox naturally expires.",
       close: "Understood",
       passcodeLabel: "Your 6-digit passcode",
       tapToCopy: "Tap to copy",
+      unavailableTitle: "Not available in this tab",
+      unavailableDesc: "Your passcode is only shown in the browser tab where you created or recovered this mailbox. To see it here, recover your mailbox again — you'll receive a fresh passcode.",
     },
     extend: {
       title: "Extend Mailbox Expiry",
