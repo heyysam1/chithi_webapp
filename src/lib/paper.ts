@@ -255,21 +255,6 @@ export const STAMPS: Record<StampId, StampDefinition> = {
   heartbreak: { id: "heartbreak", labelKey: "stamps.heartbreak" },
 };
 
-export const AVAILABLE_STAMPS: StampId[] = [
-  "wax",
-  "topSecret",
-  "memory",
-  "heartbreak",
-];
-
-export const AVAILABLE_PAPERS: PaperStyleId[] = [
-  "parchment",
-  "midnight",
-  "rose",
-  "typewriter",
-  "rainy",
-];
-
 export function getDeterministicRotation(seed: string): number {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {

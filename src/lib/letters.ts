@@ -14,6 +14,7 @@ import {
   MAILBOX_LETTER_CAP,
   RIDDLE_MAX_ATTEMPTS,
   INBOX_PAGE_SIZE,
+  MAX_THREAD_DEPTH,
 } from "./constants";
 import { keys } from "./keys";
 import { getRedis } from "./redis";
@@ -21,7 +22,7 @@ import { generateLetterId } from "./ids";
 import { toPlainText, hasExcessivelyLongWord, sanitizeSenderName } from "./sanitize";
 import { hashRiddleAnswer, sha256 } from "./crypto";
 import { ApiError } from "./api";
-import { getMailbox, remainingTtlSeconds } from "./mailbox";
+import { getMailbox, remainingTtlSeconds, keyTtlSeconds, MAX_KEY_TTL_S } from "./mailbox";
 import {
   OPEN_LETTER_SCRIPT,
   SOLVE_RIDDLE_SCRIPT,
@@ -29,10 +30,71 @@ import {
   SET_REACTION_SCRIPT,
 } from "./scripts";
 
+/**
+ * Atomically claims a send slot: re-checks the mailbox letter cap and the
+ * duplicate-body flood guard, then reserves both in a single Lua script so
+ * concurrent sends cannot slip through the check-then-act race (§COR-01).
+ *
+ * KEYS[1]: mailbox letters zset (mb:ltrs:{recipient})
+ * KEYS[2]: flood guard key (flood:{viewerHash}:{recipient})
+ * ARGV[1]: letter cap (number)
+ * ARGV[2]: sha256(body) hex
+ * ARGV[3]: flood key TTL seconds
+ * ARGV[4]: zadd score (now ms)
+ * ARGV[5]: letterId
+ * ARGV[6]: letters zset TTL seconds
+ * Returns: 1 = slot claimed, 0 = mailbox full, -1 = duplicate flood
+ */
+const CLAIM_SEND_SLOT_SCRIPT = `
+local count = redis.call('ZCARD', KEYS[1])
+if count >= tonumber(ARGV[1]) then
+  return 0
+end
+
+local recent = redis.call('GET', KEYS[2])
+if recent and recent == ARGV[2] then
+  return -1
+end
+
+redis.call('SET', KEYS[2], ARGV[2], 'EX', tonumber(ARGV[3]))
+redis.call('ZADD', KEYS[1], tonumber(ARGV[4]), ARGV[5])
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[6]))
+return 1
+`;
+
+function toLetterSummary(letter: LetterRecord): LetterSummary {
+  return {
+    id: letter.id,
+    stamp: letter.stamp,
+    paper: letter.paper,
+    createdAt: letter.createdAt,
+    source: letter.source,
+    hasHints: letter.hints.length > 0,
+    hintCount: letter.hints.length,
+    lockKind: letter.lock.kind,
+    unlockAt: letter.lock.kind === "capsule" ? letter.lock.unlockAt : undefined,
+    question: letter.lock.kind === "riddle" ? letter.lock.question : undefined,
+    attemptsRemaining:
+      letter.lock.kind === "riddle"
+        ? Math.max(0, RIDDLE_MAX_ATTEMPTS - letter.lock.attempts)
+        : undefined,
+    isOpened: letter.openedAt !== null,
+    burnAt: letter.burnAt,
+    burnAfterReading: letter.burnAfterReading,
+    reaction: letter.reaction,
+    published: letter.published,
+    senderName: letter.senderName,
+    scheduledFor: letter.scheduledFor ?? null,
+    replyTo: letter.replyTo ?? null,
+  };
+}
+
 async function letterTtlSeconds(letter: LetterRecord): Promise<number> {
   const mailbox = await getMailbox(letter.recipient);
   if (!mailbox) throw new ApiError("GONE", "errors.mailboxExpired", 410);
-  return remainingTtlSeconds(mailbox);
+  // Physical Redis key TTL: capped for Redis (the permanent mailbox's logical
+  // TTL exceeds Redis' 2^31-1 second limit). All callers use this as a key TTL.
+  return Math.min(remainingTtlSeconds(mailbox), MAX_KEY_TTL_S);
 }
 
 export async function sendLetter(
@@ -114,8 +176,70 @@ export async function sendLetter(
     };
   }
 
-  // 6. Letter ID and record
+  // 5b. Validate scheduled delivery and reply target
+  let scheduledFor: number | null = null;
+  if (input.scheduledFor != null) {
+    if (input.scheduledFor <= now + 60_000) {
+      throw new ApiError("VALIDATION_FAILED", "errors.scheduleTooSoon", 400);
+    }
+    if (input.scheduledFor > mailbox.expiresAt) {
+      throw new ApiError(
+        "VALIDATION_FAILED",
+        "errors.schedulePastMailboxExpiry",
+        400
+      );
+    }
+    scheduledFor = input.scheduledFor;
+  }
+
+  let replyTo: string | null = null;
+  if (input.replyTo) {
+    const rawParent = await redis.get<string | LetterRecord>(
+      keys.letter(input.replyTo)
+    );
+    let parent: LetterRecord | null = null;
+    try {
+      parent =
+        typeof rawParent === "string"
+          ? (JSON.parse(rawParent) as LetterRecord)
+          : (rawParent as LetterRecord | null);
+    } catch {
+      parent = null;
+    }
+    if (
+      !parent ||
+      parent.recipient !== recipientLower ||
+      (parent.scheduledFor != null && parent.scheduledFor > now)
+    ) {
+      throw new ApiError("VALIDATION_FAILED", "errors.replyToInvalid", 400);
+    }
+    // Cap thread depth so reply chains can't become endless messaging
+    // threads. The original letter is depth 0; replying to a letter already
+    // at MAX_THREAD_DEPTH would exceed it.
+    const parentDepth = await getThreadDepth(parent.id, recipientLower);
+    if (parentDepth >= MAX_THREAD_DEPTH) {
+      throw new ApiError("REPLY_DEPTH_EXCEEDED", "errors.replyDepthExceeded", 400);
+    }
+    replyTo = parent.id;
+  }
+
+  // 6. Atomically claim the send slot (letter cap + flood guard + zset
+  //    reservation) in one Lua script. The checks in steps 2-3 above are
+  //    fast-fail only; this script is the real guard so concurrent sends
+  //    cannot both slip through (§COR-01).
   const letterId = generateLetterId();
+  const remainingSeconds = keyTtlSeconds(mailbox);
+  const claim = await redis.eval<number>(
+    CLAIM_SEND_SLOT_SCRIPT,
+    [keys.mailboxLetters(recipientLower), floodKey],
+    [MAILBOX_LETTER_CAP, bodyHash, 600, now, letterId, remainingSeconds]
+  );
+  if (claim === 0) {
+    throw new ApiError("MAILBOX_FULL", "errors.mailboxFull", 409);
+  }
+  if (claim === -1) {
+    throw new ApiError("RATE_LIMITED", "errors.duplicateLetterFlood", 429);
+  }
 
   const letterRecord: LetterRecord = {
     id: letterId,
@@ -133,22 +257,19 @@ export async function sendLetter(
     reaction: null,
     published: false,
     senderName: input.isAnonymous ? null : (sanitizeSenderName(input.senderName ?? "", 40) || null),
+    scheduledFor,
+    replyTo,
     version: 1,
   };
 
-  const remainingSeconds = await remainingTtlSeconds(mailbox);
-
+  // NOTE: the letters zset entry, its TTL, and the flood-guard key were all
+  // written atomically by CLAIM_SEND_SLOT_SCRIPT above. Only the letter
+  // record itself and the unread counter remain for this pipeline.
   const pipeline = redis.pipeline();
   pipeline.set(keys.letter(letterId), JSON.stringify(letterRecord), {
     ex: remainingSeconds,
   });
-  pipeline.zadd(keys.mailboxLetters(recipientLower), {
-    score: now,
-    member: letterId,
-  });
-  pipeline.expire(keys.mailboxLetters(recipientLower), remainingSeconds);
   pipeline.incr(keys.mailboxUnread(recipientLower));
-  pipeline.set(floodKey, bodyHash, { ex: 600 });
   await pipeline.exec();
 
   return { id: letterId };
@@ -203,28 +324,13 @@ export async function listLetters(
       continue;
     }
 
-    summaries.push({
-      id: letter.id,
-      stamp: letter.stamp,
-      paper: letter.paper,
-      createdAt: letter.createdAt,
-      source: letter.source,
-      hasHints: letter.hints.length > 0,
-      hintCount: letter.hints.length,
-      lockKind: letter.lock.kind,
-      unlockAt: letter.lock.kind === "capsule" ? letter.lock.unlockAt : undefined,
-      question: letter.lock.kind === "riddle" ? letter.lock.question : undefined,
-      attemptsRemaining:
-        letter.lock.kind === "riddle"
-          ? Math.max(0, RIDDLE_MAX_ATTEMPTS - letter.lock.attempts)
-          : undefined,
-      isOpened: letter.openedAt !== null,
-      burnAt: letter.burnAt,
-      burnAfterReading: letter.burnAfterReading,
-      reaction: letter.reaction,
-      published: letter.published,
-      senderName: letter.senderName,
-    });
+    // Scheduled letters stay hidden until they are due. They are not
+    // ghost-pruned — they will surface naturally once scheduledFor passes.
+    if (letter.scheduledFor != null && letter.scheduledFor > now) {
+      continue;
+    }
+
+    summaries.push(toLetterSummary(letter));
   }
 
   // Ghost-prune on the fetched slice only (§PERF-04)
@@ -244,7 +350,7 @@ export async function listLetters(
     const trueUnreadCount = summaries.filter((s) => !s.isOpened).length;
     const mailbox = await getMailbox(usernameLower);
     if (mailbox) {
-      const ttl = remainingTtlSeconds(mailbox);
+      const ttl = keyTtlSeconds(mailbox);
       await redis.set(keys.mailboxUnread(usernameLower), trueUnreadCount, { ex: ttl });
     }
   }
@@ -271,34 +377,18 @@ export async function getLetter(
 
   const now = Date.now();
 
+  // Scheduled letters behave as if they don't exist until due — no info leak.
+  if (letter.scheduledFor != null && letter.scheduledFor > now) {
+    throw new ApiError("NOT_FOUND", "errors.letterNotFound", 404);
+  }
+
   if (letter.burnAt !== null && now > letter.burnAt) {
     await redis.del(keys.letter(letterId));
     await redis.zrem(keys.mailboxLetters(usernameLower), letterId);
     throw new ApiError("GONE", "errors.letterBurned", 410);
   }
 
-  const baseSummary: LetterSummary = {
-    id: letter.id,
-    stamp: letter.stamp,
-    paper: letter.paper,
-    createdAt: letter.createdAt,
-    source: letter.source,
-    hasHints: letter.hints.length > 0,
-    hintCount: letter.hints.length,
-    lockKind: letter.lock.kind,
-    unlockAt: letter.lock.kind === "capsule" ? letter.lock.unlockAt : undefined,
-    question: letter.lock.kind === "riddle" ? letter.lock.question : undefined,
-    attemptsRemaining:
-      letter.lock.kind === "riddle"
-        ? Math.max(0, RIDDLE_MAX_ATTEMPTS - letter.lock.attempts)
-        : undefined,
-    isOpened: letter.openedAt !== null,
-    burnAt: letter.burnAt,
-    burnAfterReading: letter.burnAfterReading,
-    reaction: letter.reaction,
-    published: letter.published,
-    senderName: letter.senderName,
-  };
+  const baseSummary: LetterSummary = toLetterSummary(letter);
 
   if (letter.lock.kind === "capsule" && now < letter.lock.unlockAt) {
     return { state: "locked", summary: baseSummary };
@@ -369,8 +459,37 @@ export async function unlockLetter(
     throw new ApiError("FORBIDDEN", "errors.forbidden", 403);
   }
 
+  const now = Date.now();
+
+  // Burned letters are gone — same cleanup as getLetter().
+  if (letter.burnAt !== null && now > letter.burnAt) {
+    await redis.del(keys.letter(letterId));
+    await redis.zrem(keys.mailboxLetters(usernameLower), letterId);
+    throw new ApiError("GONE", "errors.letterBurned", 410);
+  }
+
+  // Time-capsule letters must not be readable before unlockAt. The unlock
+  // endpoint previously returned the body for any non-riddle lock, bypassing
+  // the capsule timer that getLetter() enforces.
+  if (letter.lock.kind === "capsule" && now < letter.lock.unlockAt) {
+    throw new ApiError("LOCKED", "errors.letterLockedCapsule", 423);
+  }
+
   if (letter.lock.kind !== "riddle") {
-    return { solved: true, body: letter.body };
+    // Plain or already-unlocked capsule letter: open it the same way getLetter
+    // does so burn-after-reading triggers and the unread counter decrements.
+    const ttl = await letterTtlSeconds(letter);
+    const updatedRaw = await redis.eval<string | null>(
+      OPEN_LETTER_SCRIPT,
+      [keys.letter(letterId), keys.mailboxUnread(usernameLower)],
+      [now, BURN_WINDOW_MS, ttl]
+    );
+    const updatedLetter: LetterRecord = updatedRaw
+      ? typeof updatedRaw === "string"
+        ? JSON.parse(updatedRaw)
+        : updatedRaw
+      : letter;
+    return { solved: true, body: updatedLetter.body };
   }
 
   if (typeof letter.lock.solvedAt === "number" && letter.lock.solvedAt > 0) {
@@ -382,7 +501,6 @@ export async function unlockLetter(
   }
 
   const incomingHash = hashRiddleAnswer(answer);
-  const now = Date.now();
   const ttl = await letterTtlSeconds(letter);
 
   const resRaw = await redis.eval<string>(
@@ -470,4 +588,115 @@ export async function reactToLetter(
   }
 
   return { reaction };
+}
+
+/**
+ * Walks the replyTo chain upward from the anchor letter and returns the
+ * thread as LetterSummary[] ordered oldest → newest.
+ *
+ * - Every letter in the chain must belong to `usernameLower`; the anchor
+ *   itself throws FORBIDDEN on a recipient mismatch, deeper mismatches end
+ *   the walk (they can only exist via data corruption).
+ * - Future-scheduled letters are invisible: the anchor throws NOT_FOUND
+ *   (same as getLetter), deeper ones end the walk.
+ * - Cycle-safe (visited set) and hop-capped at 25.
+ */
+export async function getThreadLetters(
+  letterId: string,
+  usernameLower: string
+): Promise<LetterSummary[]> {
+  const redis = getRedis();
+  const chain: LetterSummary[] = [];
+  const seen = new Set<string>();
+  const now = Date.now();
+
+  let currentId: string | null = letterId;
+  for (let hops = 0; hops < 25 && currentId; hops++) {
+    if (seen.has(currentId)) break; // replyTo cycle — stop, don't loop
+    seen.add(currentId);
+
+    const raw: string | LetterRecord | null =
+      await redis.get<string | LetterRecord>(keys.letter(currentId));
+    let letter: LetterRecord | null = null;
+    try {
+      letter =
+        typeof raw === "string"
+          ? (JSON.parse(raw) as LetterRecord)
+          : (raw as LetterRecord | null);
+    } catch {
+      letter = null;
+    }
+    if (!letter) break;
+
+    if (letter.recipient !== usernameLower) {
+      if (hops === 0) {
+        throw new ApiError("FORBIDDEN", "errors.forbidden", 403);
+      }
+      break;
+    }
+
+    if (letter.scheduledFor != null && letter.scheduledFor > now) {
+      if (hops === 0) {
+        throw new ApiError("NOT_FOUND", "errors.letterNotFound", 404);
+      }
+      break;
+    }
+
+    chain.push(toLetterSummary(letter));
+    currentId = letter.replyTo ?? null;
+  }
+
+  return chain.reverse();
+}
+
+/**
+ * Depth of a letter in its reply thread: number of ancestors, where the
+ * original letter is depth 0. Reuses getThreadLetters so cycle-safety,
+ * ownership, and scheduled-visibility rules are identical.
+ */
+export async function getThreadDepth(
+  letterId: string,
+  usernameLower: string
+): Promise<number> {
+  const chain = await getThreadLetters(letterId, usernameLower);
+  return Math.max(0, chain.length - 1);
+}
+
+/**
+ * All letters of a mailbox with full bodies, for the owner's export.
+ * Includes future-scheduled letters (the owner's own data); excludes
+ * burned letters. Ordered oldest → newest for readable exports.
+ */
+export async function getLettersForExport(
+  usernameLower: string
+): Promise<Array<LetterSummary & { body: string }>> {
+  const redis = getRedis();
+  const letterIds: string[] = await redis.zrange(
+    keys.mailboxLetters(usernameLower),
+    0,
+    -1
+  );
+  if (!letterIds || letterIds.length === 0) return [];
+
+  const rawLetters = await redis.mget<unknown[]>(
+    ...letterIds.map((id) => keys.letter(id))
+  );
+  const now = Date.now();
+  const out: Array<LetterSummary & { body: string }> = [];
+
+  for (const raw of rawLetters) {
+    if (!raw) continue;
+    let letter: LetterRecord;
+    try {
+      letter = typeof raw === "string" ? JSON.parse(raw) : (raw as LetterRecord);
+    } catch {
+      continue;
+    }
+    if (letter.recipient !== usernameLower) continue;
+    if (letter.burnAt !== null && now > letter.burnAt) continue;
+    out.push({ ...toLetterSummary(letter), body: letter.body });
+  }
+
+  out.sort((a, b) => a.createdAt - b.createdAt);
+  return out;
 }
