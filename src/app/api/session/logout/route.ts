@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { apiOk, apiErr } from "@/lib/api";
+import { requireMailboxOwner } from "@/lib/auth";
+import { revokeMailboxAccess } from "@/lib/mailbox";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +11,7 @@ export async function POST(req: NextRequest) {
     const cookieHeader = req.headers.get("cookie") || "";
     const prefix = "chithi_s_";
     const cookiesToClear: string[] = [];
+    const usernamesToRevoke = new Set<string>();
 
     let targetUsername: string | null = null;
     try {
@@ -22,6 +25,7 @@ export async function POST(req: NextRequest) {
 
     if (targetUsername) {
       cookiesToClear.push(`chithi_s_${targetUsername}`);
+      usernamesToRevoke.add(targetUsername);
     } else {
       // Parse all chithi_s_* cookie names from incoming request
       for (const c of cookieHeader.split(";")) {
@@ -32,9 +36,25 @@ export async function POST(req: NextRequest) {
             const cookieName = trimmed.slice(0, eqIdx).trim();
             if (cookieName && !cookiesToClear.includes(cookieName)) {
               cookiesToClear.push(cookieName);
+              usernamesToRevoke.add(cookieName.slice(prefix.length).toLowerCase());
             }
           }
         }
+      }
+    }
+
+    // Server-side invalidation: rotate the mailbox's access token hash so every
+    // bearer token / session cookie previously issued for it stops working —
+    // even tokens copied out of the ?key= URL, browser history, or logs.
+    // Only revoke when the caller proves ownership of the mailbox (via cookie
+    // or Bearer token); otherwise fall through to local cookie cleanup only.
+    for (const usernameLower of usernamesToRevoke) {
+      try {
+        await requireMailboxOwner(req, usernameLower);
+        await revokeMailboxAccess(usernameLower);
+      } catch {
+        // No valid session for this mailbox: nothing server-side to revoke.
+        // Local cookie cleanup below still runs.
       }
     }
 
