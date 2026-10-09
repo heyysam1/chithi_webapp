@@ -8,7 +8,7 @@ const cspHeader = `
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob:;
   font-src 'self' data:;
-  connect-src 'self' https://*.upstash.io;
+  connect-src 'self' https://*.upstash.io https://vitals.vercel-insights.com;
   frame-ancestors 'none';
   object-src 'none';
   base-uri 'self';

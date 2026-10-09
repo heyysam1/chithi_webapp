@@ -27,8 +27,10 @@ export async function generateMetadata({
 
 export default async function PublicWriteLetterPage(props: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ replyTo?: string }>;
 }) {
   const { username } = await props.params;
+  const { replyTo } = await props.searchParams;
 
   let mailboxMeta;
   try {
@@ -50,15 +52,22 @@ export default async function PublicWriteLetterPage(props: {
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink">
               Writing to <span className="text-wax">@{mailboxMeta.username}</span>
             </h1>
-            <p className="text-xs text-ink-muted mt-1">
-              Your words will be delivered anonymously and securely.
-            </p>
           </div>
         </div>
 
         {/* Letter Composer */}
         <LetterComposer
           recipientUsername={mailboxMeta.username}
+          // getPublicMailbox exposes the mailbox expiry; the capsule lock
+          // option in AdvancedModePanel is gated on this prop. Read
+          // defensively so the page compiles whether or not the field is
+          // present on the return type yet.
+          mailboxExpiresAt={
+            (mailboxMeta as unknown as { expiresAt?: number }).expiresAt
+          }
+          // Thread replies arrive via ?replyTo=<letterId>. The ID is validated
+          // server-side in sendLetter(); the composer only echoes it back.
+          replyToId={replyTo}
         />
       </div>
     </PageShell>
