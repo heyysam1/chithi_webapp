@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Flame } from "lucide-react";
 import { BURN_WINDOW_MS } from "@/lib/constants";
 import { useLocale } from "@/hooks/useLocale";
@@ -14,19 +14,28 @@ export interface BurnTimerProps {
 export function BurnTimer({ burnAt, onBurned }: BurnTimerProps) {
   const { locale, t } = useLocale();
   const [remainingMs, setRemainingMs] = useState(() => Math.max(0, burnAt - Date.now()));
+  // Guard so onBurned fires exactly once even though the interval keeps ticking.
+  const burnedRef = useRef(false);
 
   useEffect(() => {
+    // Reset for a new burn window (e.g. a different letter).
+    burnedRef.current = false;
+
     const checkTimer = () => {
       const remaining = Math.max(0, burnAt - Date.now());
       setRemainingMs(remaining);
 
-      if (remaining <= 0) {
+      if (remaining <= 0 && !burnedRef.current) {
+        burnedRef.current = true;
+        clearInterval(interval);
         onBurned();
       }
     };
 
-    checkTimer();
+    // Declared before first use (TDZ-safe: checkTimer only reads `interval`
+    // when it actually runs, which is always after this line).
     const interval = setInterval(checkTimer, 200);
+    checkTimer();
 
     return () => clearInterval(interval);
   }, [burnAt, onBurned]);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
@@ -73,6 +73,10 @@ export default function HomePage() {
   const [searchStatus, setSearchStatus] = useState<"idle" | "checking" | "found" | "not_found">("idle");
 
   // 3. Username availability check debounced 400ms with automatic collision resolution for suggestions
+  // Sequence guard: stale responses from earlier keystrokes must not
+  // overwrite the indicator for the current username.
+  const availabilitySeqRef = useRef(0);
+
   useEffect(() => {
     const trimmed = username.trim().toLowerCase();
     if (!trimmed || trimmed.length < 3) {
@@ -86,10 +90,13 @@ export default function HomePage() {
     }
 
     setAvailability("checking");
+    const seq = ++availabilitySeqRef.current;
+    const isStale = () => availabilitySeqRef.current !== seq;
     const timeout = setTimeout(async () => {
       try {
         const res = await fetch(`/api/mailbox/${encodeURIComponent(trimmed)}`);
         const json = await res.json();
+        if (isStale()) return;
         if (json.ok && json.data?.exists) {
           setAvailability("taken");
           // If collision occurs on an automatic suggestion, generate a suitable alternative
@@ -103,6 +110,7 @@ export default function HomePage() {
           setAvailability("available");
         }
       } catch {
+        if (isStale()) return;
         setAvailability("available");
       }
     }, 400);
@@ -126,7 +134,9 @@ export default function HomePage() {
     setUsername(e.target.value);
   };
 
-  // 4. Recipient search debounced 400ms
+  // 4. Recipient search debounced 400ms (same stale-response guard as above)
+  const searchSeqRef = useRef(0);
+
   useEffect(() => {
     const trimmed = searchUsername.trim().toLowerCase();
     if (!trimmed || trimmed.length < 3) {
@@ -135,16 +145,19 @@ export default function HomePage() {
     }
 
     setSearchStatus("checking");
+    const seq = ++searchSeqRef.current;
     const timeout = setTimeout(async () => {
       try {
         const res = await fetch(`/api/mailbox/${encodeURIComponent(trimmed)}`);
         const json = await res.json();
+        if (searchSeqRef.current !== seq) return;
         if (json.ok && json.data?.exists) {
           setSearchStatus("found");
         } else {
           setSearchStatus("not_found");
         }
       } catch {
+        if (searchSeqRef.current !== seq) return;
         setSearchStatus("not_found");
       }
     }, 400);

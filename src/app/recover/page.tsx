@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { CopyField } from "@/components/ui/CopyField";
 import { useLocale } from "@/hooks/useLocale";
-import { useToast } from "@/hooks/useToast";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSession } from "@/hooks/useSession";
 import { KeyRound, AlertTriangle } from "lucide-react";
@@ -16,7 +16,6 @@ function RecoverForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLocale();
-  const { showToast } = useToast();
   const { refresh } = useSession();
 
   const queryUsername = searchParams?.get("username") || "";
@@ -27,6 +26,9 @@ function RecoverForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
+  // After a successful recovery the server rotates the passcode (the old one
+  // no longer works), so the new one must be shown before leaving this page.
+  const [recovered, setRecovered] = useState<{ username: string; recoveryPasscode: string } | null>(null);
 
   useEffect(() => {
     if (queryUsername && !username) {
@@ -107,8 +109,18 @@ function RecoverForm() {
       if (json.ok) {
         saveToken(json.data.accessToken);
         await refresh();
-        showToast("Access restored successfully", "success");
-        router.push(`/inbox/${json.data.username}`);
+        // Do NOT redirect yet: the server rotated the passcode, and the new
+        // one is shown only once. Let the user save it first.
+        if (typeof window !== "undefined" && json.data.recoveryPasscode) {
+          sessionStorage.setItem(
+            `chithi:passcode:${String(json.data.username).toLowerCase()}`,
+            json.data.recoveryPasscode
+          );
+        }
+        setRecovered({
+          username: json.data.username,
+          recoveryPasscode: json.data.recoveryPasscode,
+        });
       } else {
         if (res.status === 429) {
           const retryHeader = res.headers.get("Retry-After");
@@ -143,6 +155,33 @@ function RecoverForm() {
 
         <div className="border border-edge rounded-2xl sm:rounded-3xl bg-surface p-4 sm:p-8 shadow-xl relative">
 
+          {recovered ? (
+            <div className="space-y-5 text-center">
+              <div className="w-12 h-12 rounded-2xl border border-success-edge flex items-center justify-center text-success bg-success-surface mx-auto shadow-sm">
+                <KeyRound size={22} strokeWidth={1.5} aria-hidden="true" />
+              </div>
+              <h2 className="text-xl font-serif font-bold text-ink">
+                {t("recover.successTitle")}
+              </h2>
+              <div className="text-left">
+                <CopyField
+                  value={recovered.recoveryPasscode}
+                  label={t("recover.newPasscodeTitle")}
+                  helperText={t("recover.newPasscodeDesc")}
+                  isSensitive
+                />
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="w-full rounded-full"
+                onClick={() => router.push(`/inbox/${recovered.username}`)}
+              >
+                {t("recover.goToInbox")}
+              </Button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <label htmlFor="recover-name" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
@@ -223,6 +262,7 @@ function RecoverForm() {
               {t("recover.submit")}
             </Button>
           </form>
+          )}
         </div>
       </div>
     </PageShell>

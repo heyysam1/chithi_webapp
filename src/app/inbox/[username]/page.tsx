@@ -26,6 +26,22 @@ import { ShieldAlert, Copy, Bell } from "lucide-react";
 import { useLetterNotifications } from "@/hooks/useLetterNotifications";
 import { useSession } from "@/context/SessionContext";
 
+/**
+ * Reads the cached bearer token: sessionStorage first (current location),
+ * then the legacy localStorage copy. Mirrors useAccessToken's migration.
+ */
+function readCachedToken(usernameLower: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (
+      sessionStorage.getItem(`chithi:token:${usernameLower}`) ??
+      localStorage.getItem(`chithi:token:${usernameLower}`)
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default function InboxPage(props: {
   params: Promise<{ username: string }>;
 }) {
@@ -115,9 +131,7 @@ export default function InboxPage(props: {
       const storedToken =
         token ||
         keyParam ||
-        (typeof window !== "undefined"
-          ? localStorage.getItem(`chithi:token:${usernameLower}`)
-          : null);
+        readCachedToken(usernameLower);
 
       const headers: Record<string, string> = {};
       if (storedToken) {
@@ -183,7 +197,6 @@ export default function InboxPage(props: {
     if (keyParam) {
       saveToken(keyParam);
       if (typeof window !== "undefined") {
-        localStorage.setItem(`chithi:token:${usernameLower}`, keyParam);
         localStorage.setItem("chithi:active", usernameLower);
       }
       fetch("/api/session/exchange", {
@@ -211,9 +224,7 @@ export default function InboxPage(props: {
     try {
       const storedToken =
         token ||
-        (typeof window !== "undefined"
-          ? localStorage.getItem(`chithi:token:${usernameLower}`)
-          : null);
+        readCachedToken(usernameLower);
       const headers: Record<string, string> = {};
       if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
       const res = await fetch(
@@ -244,9 +255,7 @@ export default function InboxPage(props: {
     try {
       const storedToken =
         token ||
-        (typeof window !== "undefined"
-          ? localStorage.getItem(`chithi:token:${usernameLower}`)
-          : null);
+        readCachedToken(usernameLower);
 
       const headers: Record<string, string> = {};
       if (storedToken) {
@@ -298,42 +307,67 @@ export default function InboxPage(props: {
     }
   };
 
-  const handleUnlockedRiddle = (body: string) => {
+  const handleUnlockedRiddle = async (body: string) => {
     if (!lockedGateData) return;
-    const foundSummary = letters.find((l) => l.id === lockedGateData.letterId);
+    const letterId = lockedGateData.letterId;
+    const foundSummary = letters.find((l) => l.id === letterId);
     if (foundSummary) {
-      setActiveLetter({
-        id: foundSummary.id,
-        recipient: usernameLower,
-        body,
-        paper: foundSummary.paper,
-        stamp: foundSummary.stamp,
-        hints: [],
-        source: foundSummary.source,
-        createdAt: foundSummary.createdAt,
-        lock: { kind: "none" },
-        burnAfterReading: foundSummary.burnAfterReading,
-        openedAt: Date.now(),
-        burnAt: foundSummary.burnAt,
-        reaction: foundSummary.reaction,
-        published: foundSummary.published,
-        senderName: foundSummary.senderName,
-        version: 1,
-      });
+      // The unlock API returns only `body`; fetch the opened letter so the
+      // hints the envelope advertised are actually shown in the reader.
+      let fullLetter: OpenLetter | null = null;
+      try {
+        const storedToken = token || readCachedToken(usernameLower);
+        const headers: Record<string, string> = {};
+        if (storedToken) {
+          headers["Authorization"] = `Bearer ${storedToken}`;
+        }
+        const res = await fetch(
+          `/api/letters/${letterId}?username=${encodeURIComponent(usernameLower)}`,
+          { headers }
+        );
+        const json = await res.json();
+        if (json.ok && json.data?.state === "open" && json.data?.letter) {
+          fullLetter = json.data.letter as OpenLetter;
+        }
+      } catch {
+        // Fall through to the body-only construction below.
+      }
+
+      setActiveLetter(
+        fullLetter ?? {
+          id: foundSummary.id,
+          recipient: usernameLower,
+          body,
+          paper: foundSummary.paper,
+          stamp: foundSummary.stamp,
+          hints: [],
+          source: foundSummary.source,
+          createdAt: foundSummary.createdAt,
+          lock: { kind: "none" },
+          burnAfterReading: foundSummary.burnAfterReading,
+          openedAt: Date.now(),
+          burnAt: foundSummary.burnAt,
+          reaction: foundSummary.reaction,
+          published: foundSummary.published,
+          senderName: foundSummary.senderName,
+          version: 1,
+        }
+      );
       setLockedGateData(null);
       setIsReaderOpen(true);
       setLetters((prev) =>
         prev.map((l) => (l.id === foundSummary.id ? { ...l, isOpened: true } : l))
       );
+      if (!foundSummary.isOpened) {
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
     }
   };
 
   const handleDeleteLetter = async (letterId: string) => {
     const storedToken =
       token ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem(`chithi:token:${usernameLower}`)
-        : null);
+      readCachedToken(usernameLower);
     const headers: Record<string, string> = {};
     if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
 
@@ -347,9 +381,7 @@ export default function InboxPage(props: {
   const handlePublishLetter = async (letterId: string) => {
     const storedToken =
       token ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem(`chithi:token:${usernameLower}`)
-        : null);
+      readCachedToken(usernameLower);
     const headers: Record<string, string> = {};
     if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
 
@@ -372,9 +404,7 @@ export default function InboxPage(props: {
   ) => {
     const storedToken =
       token ||
-      (typeof window !== "undefined"
-        ? localStorage.getItem(`chithi:token:${usernameLower}`)
-        : null);
+      readCachedToken(usernameLower);
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -592,7 +622,7 @@ export default function InboxPage(props: {
                   ))}
                 </div>
 
-                {nextCursor !== null && activeFilter === "all" && (
+                {nextCursor !== null && (
                   <div className="flex justify-center pt-6">
                     <button
                       onClick={handleLoadMore}
@@ -638,7 +668,9 @@ export default function InboxPage(props: {
         onReact={handleReactToLetter}
         onDownloadPostcard={(ltr) => {
           setPostcardLetter(ltr);
-          setTimeout(() => downloadPostcard(ltr), 50);
+          // useDownloadPostcard waits for the canvas to render the new letter
+          // before capturing, so no fixed timeout is needed here.
+          downloadPostcard(ltr);
         }}
         onReport={(id) => setReportTargetId(id)}
       />
