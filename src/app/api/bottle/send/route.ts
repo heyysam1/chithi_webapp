@@ -3,26 +3,11 @@ import { SendBottleSchema } from "@/lib/schemas";
 import { sendBottle } from "@/lib/bottle";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, getViewerHash, parseJsonBody, rateLimitHeaders } from "@/lib/api";
-import { getSessionUsername } from "@/lib/auth";
+import { resolveBottleSender } from "@/lib/bottleSender";
 import { incrMetric } from "@/lib/metrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/**
- * Resolves the sender identity used for self-targeting exclusion.
- * Only a server-verified session cookie is authoritative: `getSessionUsername`
- * derives the username from `chithi_s_*` cookies (the optional claimed name is
- * only a disambiguator among those cookies). For a logged-out sender the
- * client-supplied `senderUsername` is *never* trusted — it is dropped instead
- * of being used to exclude an arbitrary mailbox from receiving the bottle.
- */
-export function resolveBottleSender(
-  req: NextRequest,
-  claimedUsername?: string | null
-): string | undefined {
-  return getSessionUsername(req, claimedUsername) ?? undefined;
-}
 
 export async function POST(req: NextRequest) {
   try {

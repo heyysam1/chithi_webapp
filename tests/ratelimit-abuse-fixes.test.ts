@@ -8,7 +8,7 @@ import {
 } from "../src/lib/ratelimit";
 import { createMailbox } from "../src/lib/mailbox";
 import { POST as exchangePOST } from "../src/app/api/session/exchange/route";
-import { resolveBottleSender } from "../src/app/api/bottle/send/route";
+import { resolveBottleSender } from "../src/lib/bottleSender";
 
 function reqWithHeaders(headers: Record<string, string>): NextRequest {
   return new NextRequest("http://localhost/api/_test", {
