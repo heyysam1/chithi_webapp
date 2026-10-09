@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { bn, enUS } from "date-fns/locale";
 import { Locale } from "./types";
+import { PERMANENT_EXPIRES_AT } from "./constants";
 
 const BENGALI_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
 
@@ -47,6 +48,11 @@ export function formatCountdown(
   targetEpochMs: number,
   locale: Locale = "en"
 ): string {
+  // Permanent owner mailbox: never show a numeric countdown anywhere.
+  if (targetEpochMs >= PERMANENT_EXPIRES_AT) {
+    return locale === "bn" ? "অসীম" : "Infinite";
+  }
+
   const { days, hours, minutes, seconds, isExpired } = getCountdownParts(targetEpochMs);
 
   if (isExpired) {

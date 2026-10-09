@@ -20,6 +20,20 @@ export function savePasscode(username: string, passcode: string): void {
   }
 }
 
+/**
+ * Silent save: persistent copy only, no session flag.
+ * Used after recovery logins so the one-time key card does NOT pop up —
+ * the card is shown only once, right after mailbox creation.
+ */
+export function savePasscodeQuiet(username: string, passcode: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key(username), passcode);
+  } catch {
+    // Storage unavailable (private mode etc.) — non-fatal.
+  }
+}
+
 /** Persistent read for the profile passcode modal. Migrates legacy saves. */
 export function readPasscode(username: string): string | null {
   if (typeof window === "undefined") return null;

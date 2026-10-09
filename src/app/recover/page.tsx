@@ -10,7 +10,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSession } from "@/hooks/useSession";
 import { KeyRound, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { savePasscode } from "@/lib/passcodeStorage";
+import { savePasscodeQuiet } from "@/lib/passcodeStorage";
 
 function RecoverForm() {
   const router = useRouter();
@@ -109,10 +109,11 @@ function RecoverForm() {
       if (json.ok) {
         saveToken(json.data.accessToken);
         await refresh();
-        // Do NOT redirect yet: the server rotated the passcode, and the new
-        // one is shown only once. Let the user save it first.
+        // Do NOT redirect yet: show the slim "Access Restored" confirmation.
+        // The rotated passcode is saved silently (no one-time key card popup —
+        // that card appears only once, right after mailbox creation).
         if (typeof window !== "undefined" && json.data.recoveryPasscode) {
-          savePasscode(String(json.data.username), json.data.recoveryPasscode);
+          savePasscodeQuiet(String(json.data.username), json.data.recoveryPasscode);
         }
         setRecovered({
           username: json.data.username,
