@@ -40,6 +40,7 @@ export const RESERVED_USERNAMES = [
   "help",
   "support",
   "report",
+  "developer",
 ] as const;
 
 export const LETTER_BODY_MIN = 1;

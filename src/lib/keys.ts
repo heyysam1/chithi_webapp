@@ -124,4 +124,11 @@ export const keys = {
    */
   metricDay: (metric: string, dateStr: string): string =>
     `stats:${metric}:${dateStr}`,
+
+  /**
+   * Daily HyperLogLog for unique visitors: stats:uv:{YYYY-MM-DD}
+   * Holds SHA-256 hashes of (client IP + day) — one-way, irreversible.
+   * No IPs are ever stored. TTL 400 days.
+   */
+  uniqueVisitorsDay: (dateStr: string): string => `stats:uv:${dateStr}`,
 } as const;
