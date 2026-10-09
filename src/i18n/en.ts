@@ -313,6 +313,11 @@ export const en = {
       p5: "Safety & Moderation: In an anonymous environment, mutual respect is vital. Any letter or public post can be reported with one click. 3 distinct reports trigger immediate auto-quarantine.",
     },
   },
+  developer: {
+    title: "About the Developer",
+    tagline: "Building small things on the web, for fun.",
+    bio: "Chithi started as a hobby project — I just love building things for the web. Along the way I noticed most anonymous platforms harvest data, force logins, or ignore privacy, so I built this one differently: open for everyone, nothing harvested, nothing exploited. Your words stay yours.",
+  },
   report: {
     dialogTitle: "Report Content",
     dialogDesc: "Help us keep Chithi safe. What is wrong with this content?",
@@ -525,7 +530,10 @@ export const en = {
     overview: {
       statActiveMailboxes: "Active mailboxes",
       statLettersTotal: "Total letters",
-      statVisitsToday: "Visits today",
+      traffic: "Traffic",
+      uniqueVisitors: "Unique visitors",
+      pageViews: "Page views",
+      last7days: "last 7 days",
       statBottlesPool: "Bottles in pool",
       statPendingReports: "Pending reports",
       statStorageKeys: "Storage keys",

@@ -75,6 +75,12 @@ export interface OverviewData {
   storage: { keys: number };
   reports: { pending: number };
   sessions: { active: number };
+  traffic: {
+    visitsToday: number;
+    uniqueVisitorsToday: number;
+    visitsWeek: number;
+    uniqueVisitorsWeek: number;
+  };
 }
 
 export interface SeriesPoint {

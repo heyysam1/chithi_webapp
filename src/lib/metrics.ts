@@ -1,7 +1,9 @@
 /**
  * Aggregate metrics for the admin dashboard.
  *
- * Privacy design: counters only. Keys are `stats:{metric}:{YYYY-MM-DD}`
+ * Privacy design: counters and HyperLogLog sketches only. Counter keys are
+ * `stats:{metric}:{YYYY-MM-DD}`; unique-visitor sketches are
+ * `stats:uv:{YYYY-MM-DD}` holding one-way SHA-256 hashes of (IP + day).
  * (Asia/Dhaka calendar day). No IPs, user agents, usernames, or any
  * identity is ever stored. Retention is 400 days via key TTL.
  *
@@ -90,16 +92,8 @@ export interface MetricPoint {
   value: number;
 }
 
-/**
- * Daily series for a metric over [from, to] (inclusive, YYYY-MM-DD).
- * Missing days read as 0. Throws on invalid input — callers (admin API)
- * convert this into a 400 response.
- */
-export async function getMetricSeries(
-  metric: string,
-  from: string,
-  to: string
-): Promise<MetricPoint[]> {
+/** Shared YYYY-MM-DD range validation; returns the list of day strings. */
+function dateRangeDays(from: string, to: string): string[] {
   if (!DATE_RE.test(from) || !DATE_RE.test(to)) {
     throw new Error("Invalid date format; expected YYYY-MM-DD");
   }
@@ -120,6 +114,20 @@ export async function getMetricSeries(
   ) {
     days.push(d.toISOString().slice(0, 10));
   }
+  return days;
+}
+
+/**
+ * Daily series for a metric over [from, to] (inclusive, YYYY-MM-DD).
+ * Missing days read as 0. Throws on invalid input — callers (admin API)
+ * convert this into a 400 response.
+ */
+export async function getMetricSeries(
+  metric: string,
+  from: string,
+  to: string
+): Promise<MetricPoint[]> {
+  const days = dateRangeDays(from, to);
   const redis = getRedis();
   const values = await redis.mget(
     ...days.map((day) => keys.metricDay(metric, day))
@@ -127,5 +135,35 @@ export async function getMetricSeries(
   return days.map((date, i) => ({
     date,
     value: Number(values[i] ?? 0) || 0,
+  }));
+}
+
+/**
+ * Daily unique-visitor series over [from, to] (inclusive, YYYY-MM-DD),
+ * read from the per-day HyperLogLog sketches. Missing days read as 0.
+ * Same input validation as getMetricSeries — throws on invalid input so
+ * callers (admin API) can convert it into a 400 response.
+ *
+ * Privacy: PFCOUNT returns an estimated cardinality only; the underlying
+ * SHA-256 hashes can never be reversed into IPs or identities.
+ */
+export async function getUniqueVisitorSeries(
+  from: string,
+  to: string
+): Promise<MetricPoint[]> {
+  const days = dateRangeDays(from, to);
+  const redis = getRedis();
+  const counts = await Promise.all(
+    days.map(async (day) => {
+      try {
+        return await redis.pfcount(keys.uniqueVisitorsDay(day));
+      } catch {
+        return 0;
+      }
+    })
+  );
+  return days.map((date, i) => ({
+    date,
+    value: Number(counts[i]) || 0,
   }));
 }

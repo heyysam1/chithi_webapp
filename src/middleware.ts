@@ -3,13 +3,28 @@ import type { NextRequest } from "next/server";
 import { keys } from "@/lib/keys";
 
 /**
- * Fire-and-forget aggregate visit counter (admin dashboard `visits` metric).
+ * Fire-and-forget aggregate visit counter (admin dashboard `visits` metric)
+ * plus privacy-preserving unique-visitor sketch (`stats:uv:{day}`).
  * Edge-safe: the full metrics lib pulls Node-only modules via env.ts, which
  * the Edge runtime forbids — so this talks to Upstash REST directly.
  * Counts page navigations only (no /api, no static assets). Never throws,
- * never blocks the response. No identity is stored — one counter per day.
+ * never blocks the response.
+ *
+ * Unique visitors: the client IP is hashed with SHA-256 together with the
+ * day (salt) and only the hash is PFADDed into a HyperLogLog sketch.
+ * The hash is one-way — no IP is ever stored and none can be recovered.
  */
-function countVisit(): void {
+async function hashVisitor(ip: string, day: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${ip}|${day}`)
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function countVisit(request: NextRequest): void {
   try {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -20,20 +35,39 @@ function countVisit(): void {
       month: "2-digit",
       day: "2-digit",
     }).format(new Date());
-    const key = keys.metricDay("visits", day);
-    void fetch(`${url}/pipeline`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify([
-        ["INCR", key],
-        ["EXPIRE", key, String(400 * 24 * 60 * 60)],
-      ]),
-    }).catch(() => {
-      // Metrics must never break requests.
-    });
+    const visitsKey = keys.metricDay("visits", day);
+    const uvKey = keys.uniqueVisitorsDay(day);
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const ip = forwarded?.split(",")[0]?.trim() || realIp?.trim() || "";
+
+    void (async () => {
+      const commands: unknown[][] = [
+        ["INCR", visitsKey],
+        ["EXPIRE", visitsKey, String(400 * 24 * 60 * 60)],
+      ];
+      if (ip) {
+        try {
+          const hash = await hashVisitor(ip, day);
+          commands.push(
+            ["PFADD", uvKey, hash],
+            ["EXPIRE", uvKey, String(400 * 24 * 60 * 60)]
+          );
+        } catch {
+          // Hashing failed — still count the page view below.
+        }
+      }
+      await fetch(`${url}/pipeline`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(commands),
+      }).catch(() => {
+        // Metrics must never break requests.
+      });
+    })();
   } catch {
     // Metrics must never break requests.
   }
@@ -81,7 +115,7 @@ export function middleware(request: NextRequest) {
     !STATIC_PAGE_PATHS.has(pathname) &&
     !pathname.startsWith("/.well-known")
   ) {
-    countVisit();
+    countVisit(request);
   }
 
   return response;

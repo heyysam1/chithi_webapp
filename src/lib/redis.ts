@@ -59,6 +59,16 @@ export interface RedisLike {
   zrevrange(key: string, min: number, max: number): Promise<string[]>;
   zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number>;
   zcard(key: string): Promise<number>;
+  /**
+   * HyperLogLog: add elements to the sketch at key.
+   * Returns the number of registers altered (1 if the sketch changed).
+   */
+  pfadd(key: string, ...elements: string[]): Promise<number>;
+  /**
+   * HyperLogLog: estimated cardinality across one or more keys.
+   * Missing keys count as 0.
+   */
+  pfcount(...keys: string[]): Promise<number>;
   pipeline(): PipelineLike;
   scan(
     cursor: number | string,
@@ -77,6 +87,9 @@ export class InMemoryRedisShim implements RedisLike {
   private store = new Map<string, StoredItem>();
   private hashes = new Map<string, { data: Map<string, number | string>; expiresAt: number | null }>();
   private zsets = new Map<string, { data: Map<string, number>; expiresAt: number | null }>();
+  // HyperLogLog sketches approximated as exact sets (dev/test only —
+  // production uses real Redis HLL via @upstash/redis).
+  private hlls = new Map<string, { data: Set<string>; expiresAt: number | null }>();
 
   private isExpired(expiresAt: number | null): boolean {
     return expiresAt !== null && Date.now() > expiresAt;
@@ -94,6 +107,10 @@ export class InMemoryRedisShim implements RedisLike {
     const z = this.zsets.get(key);
     if (z && this.isExpired(z.expiresAt)) {
       this.zsets.delete(key);
+    }
+    const hll = this.hlls.get(key);
+    if (hll && this.isExpired(hll.expiresAt)) {
+      this.hlls.delete(key);
     }
   }
 
@@ -142,6 +159,7 @@ export class InMemoryRedisShim implements RedisLike {
       if (this.store.delete(key)) count++;
       if (this.hashes.delete(key)) count++;
       if (this.zsets.delete(key)) count++;
+      if (this.hlls.delete(key)) count++;
     }
     return count;
   }
@@ -193,12 +211,17 @@ export class InMemoryRedisShim implements RedisLike {
       z.expiresAt = expiresAt;
       found = true;
     }
+    const hll = this.hlls.get(key);
+    if (hll) {
+      hll.expiresAt = expiresAt;
+      found = true;
+    }
     return found ? 1 : 0;
   }
 
   async ttl(key: string): Promise<number> {
     this.cleanKey(key);
-    const item = this.store.get(key) || this.hashes.get(key) || this.zsets.get(key);
+    const item = this.store.get(key) || this.hashes.get(key) || this.zsets.get(key) || this.hlls.get(key);
     if (!item) return -2;
     if (item.expiresAt === null) return -1;
     const rem = Math.floor((item.expiresAt - Date.now()) / 1000);
@@ -359,6 +382,38 @@ export class InMemoryRedisShim implements RedisLike {
     return z ? z.data.size : 0;
   }
 
+  async pfadd(key: string, ...elements: string[]): Promise<number> {
+    this.cleanKey(key);
+    if (this.store.has(key) || this.hashes.has(key) || this.zsets.has(key)) {
+      throw new Error("WRONGTYPE Operation against a key holding the wrong kind of value");
+    }
+    let hll = this.hlls.get(key);
+    if (!hll) {
+      hll = { data: new Set(), expiresAt: null };
+      this.hlls.set(key, hll);
+    }
+    let added = 0;
+    for (const el of elements) {
+      if (!hll.data.has(el)) {
+        hll.data.add(el);
+        added++;
+      }
+    }
+    return added > 0 ? 1 : 0;
+  }
+
+  async pfcount(...keys: string[]): Promise<number> {
+    const union = new Set<string>();
+    for (const key of keys) {
+      this.cleanKey(key);
+      const hll = this.hlls.get(key);
+      if (hll) {
+        for (const el of hll.data) union.add(el);
+      }
+    }
+    return union.size;
+  }
+
   async scan(
     cursor: number | string,
     options?: { match?: string; count?: number }
@@ -367,7 +422,7 @@ export class InMemoryRedisShim implements RedisLike {
     const escaped = pattern.replace(/[-[\]{}()+?.,\\^$|#\s]/g, "\\$&").replace(/\*/g, ".*");
     const regex = new RegExp(`^${escaped}$`);
     const allKeys = Array.from(
-      new Set([...this.store.keys(), ...this.hashes.keys(), ...this.zsets.keys()])
+      new Set([...this.store.keys(), ...this.hashes.keys(), ...this.zsets.keys(), ...this.hlls.keys()])
     );
     for (const key of allKeys) {
       this.cleanKey(key);
