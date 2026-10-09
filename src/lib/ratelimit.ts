@@ -15,6 +15,9 @@ export type LimiterBucket =
   | "react"
   | "report"
   | "read"
+  | "exchange"
+  | "settings"
+  | "extend"
   | "music_search";
 
 export interface RateLimitResult {
@@ -138,11 +141,47 @@ const limiters: Record<LimiterBucket, Ratelimit | null> = {
       })
     : null,
 
+  // Credential-verification endpoint (session exchange): 30 / 10m per IP.
+  // Tokens are 256-bit (unguessable), but the endpoint is a probing oracle
+  // without throttling, so it gets its own bucket.
+  exchange: redisClient
+    ? new Ratelimit({
+        redis: redisClient,
+        limiter: Ratelimit.slidingWindow(30, "10 m"),
+        prefix: "rl:exchange",
+        ephemeralCache,
+        analytics: false,
+      })
+    : null,
+
+  // Mailbox settings writes (owner-only): generous, just bounds abuse.
+  settings: redisClient
+    ? new Ratelimit({
+        redis: redisClient,
+        limiter: Ratelimit.slidingWindow(20, "1 h"),
+        prefix: "rl:settings",
+        ephemeralCache,
+        analytics: false,
+      })
+    : null,
+
   music_search: redisClient
     ? new Ratelimit({
         redis: redisClient,
         limiter: Ratelimit.slidingWindow(15, "1 m"),
         prefix: "rl:music:search",
+        ephemeralCache,
+        analytics: false,
+      })
+    : null,
+
+  // Mailbox expiry extensions (owner-only): lifetime cap is 3, so this is
+  // just a bound on write amplification, never a legit-use blocker.
+  extend: redisClient
+    ? new Ratelimit({
+        redis: redisClient,
+        limiter: Ratelimit.slidingWindow(10, "1 h"),
+        prefix: "rl:extend",
         ephemeralCache,
         analytics: false,
       })

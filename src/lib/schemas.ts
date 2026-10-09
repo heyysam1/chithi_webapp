@@ -66,6 +66,16 @@ export const UpdateSettingsSchema = z
 
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;
 
+export const ExtendMailboxSchema = z
+  .object({
+    durationKey: z.enum(["24h", "3d", "5d", "7d"], {
+      errorMap: () => ({ message: "errors.validation.durationInvalid" }),
+    }),
+  })
+  .strict();
+
+export type ExtendMailboxInput = z.infer<typeof ExtendMailboxSchema>;
+
 const PaperStyleEnum = z.enum([
   "parchment",
   "midnight",
@@ -93,6 +103,11 @@ export const SendLetterSchema = z
     burnAfterReading: z.boolean().default(false),
     senderName: z.string().trim().max(50).optional().nullable(),
     isAnonymous: z.boolean().default(true),
+    // Epoch ms when the letter becomes deliverable. Semantic checks
+    // (> now + 60s, <= mailbox expiry) happen in sendLetter().
+    scheduledFor: z.number().int().positive().optional().nullable(),
+    // Letter ID (same recipient mailbox) this letter replies to.
+    replyTo: z.string().min(1).max(64).optional().nullable(),
     mode: z.discriminatedUnion("kind", [
       z.object({ kind: z.literal("none") }),
       z.object({
@@ -119,15 +134,11 @@ export const UnlockLetterSchema = z
   })
   .strict();
 
-export type UnlockLetterInput = z.infer<typeof UnlockLetterSchema>;
-
 export const ReactLetterSchema = z
   .object({
     reaction: z.enum(["heart", "heartCrack"]),
   })
   .strict();
-
-export type ReactLetterInput = z.infer<typeof ReactLetterSchema>;
 
 export const SendBottleSchema = z
   .object({
@@ -157,8 +168,6 @@ export const ReactFeedSchema = z
   })
   .strict();
 
-export type ReactFeedInput = z.infer<typeof ReactFeedSchema>;
-
 export const ReportSchema = z
   .object({
     targetType: z.enum(["letter", "feed"]),
@@ -167,5 +176,3 @@ export const ReportSchema = z
     note: z.string().max(300).optional(),
   })
   .strict();
-
-export type ReportInput = z.infer<typeof ReportSchema>;

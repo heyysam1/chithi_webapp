@@ -1,6 +1,8 @@
-import { DURATIONS } from "./constants";
+import { DURATIONS, EXTEND_DURATIONS } from "./constants";
 
 export type DurationKey = keyof typeof DURATIONS;
+
+export type ExtendDurationKey = keyof typeof EXTEND_DURATIONS;
 
 export type Gender = "male" | "female" | "other" | "unspecified";
 
@@ -44,6 +46,10 @@ export interface MailboxRecord {
   durationKey: DurationKey;
   letterCount: number;
   version: 1;
+  /** True for the env-configured permanent owner mailbox: never expires, never purged. */
+  isPermanent?: boolean;
+  /** Lifetime expiry extensions used. Old records lack the field — read paths must default to 0. */
+  extensionsUsed: number;
 }
 
 export type LetterLock =
@@ -73,6 +79,10 @@ export interface LetterRecord {
   reaction: "heart" | "heartCrack" | null;
   published: boolean;
   senderName?: string | null;
+  /** Epoch ms when a scheduled letter becomes deliverable. Null = deliver immediately. */
+  scheduledFor: number | null;
+  /** Letter ID this letter replies to (same mailbox). Null = not a reply. */
+  replyTo: string | null;
   version: 1;
 }
 
@@ -105,6 +115,8 @@ export interface LetterSummary {
   reaction: "heart" | "heartCrack" | null;
   published: boolean;
   senderName?: string | null;
+  scheduledFor?: number | null;
+  replyTo?: string | null;
 }
 
 export interface OpenLetter {
@@ -153,6 +165,10 @@ export type ErrorCode =
   | "BOTTLE_NO_MATCH"
   | "ALREADY_DONE"
   | "RATE_LIMITED"
+  | "EXTENSIONS_EXHAUSTED"
+  | "MAX_EXPIRY_REACHED"
+  | "REPLY_DEPTH_EXCEEDED"
+  | "PERMANENT_MAILBOX"
   | "INTERNAL";
 
 export interface ApiOk<T> {

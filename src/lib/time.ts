@@ -1,7 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { bn, enUS } from "date-fns/locale";
-import { DURATIONS } from "./constants";
-import { DurationKey, Locale } from "./types";
+import { Locale } from "./types";
 
 const BENGALI_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
 
@@ -10,14 +9,6 @@ const BENGALI_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", 
  */
 export function toBengaliDigits(input: string | number): string {
   return String(input).replace(/[0-9]/g, (digit) => BENGALI_DIGITS[Number(digit)] ?? digit);
-}
-
-/**
- * Calculates remaining lifetime in seconds for Redis TTL clamping.
- */
-export function calculateRemainingTtlSeconds(expiresAtMs: number): number {
-  const remainingMs = expiresAtMs - Date.now();
-  return Math.max(1, Math.floor(remainingMs / 1000));
 }
 
 /**
@@ -92,11 +83,4 @@ export function formatRelativeTime(epochMs: number, locale: Locale = "en"): stri
     const fallback = `${Math.round((Date.now() - epochMs) / 60000)}m ago`;
     return locale === "bn" ? toBengaliDigits(fallback) : fallback;
   }
-}
-
-/**
- * Returns human-readable label for a duration key
- */
-export function getDurationSeconds(key: DurationKey): number {
-  return DURATIONS[key];
 }

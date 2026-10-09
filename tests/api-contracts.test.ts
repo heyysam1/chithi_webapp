@@ -110,11 +110,33 @@ test("API-01 & API-02: Every API route returns canonical envelope and no-store",
       params: { username: "nonexistent_usr_xyz" },
     },
     {
-      name: "GET /api/mailbox/[username]/letters (no auth -> 401)",
-      importPath: "../src/app/api/mailbox/[username]/letters/route",
+      name: "GET /api/letters/[id] (no username param -> 400)",
+      importPath: "../src/app/api/letters/[id]/route",
       method: "GET",
-      url: "http://localhost:3000/api/mailbox/testuser/letters",
-      params: { username: "testuser" },
+      url: "http://localhost:3000/api/letters/ltr_123",
+      params: { id: "ltr_123" },
+    },
+    {
+      name: "POST /api/letters/[id]/react (no username param -> 400)",
+      importPath: "../src/app/api/letters/[id]/react/route",
+      method: "POST",
+      url: "http://localhost:3000/api/letters/ltr_123/react",
+      body: { reaction: "heart" },
+      params: { id: "ltr_123" },
+    },
+    {
+      name: "POST /api/locale (empty body -> 200, defaults to en)",
+      importPath: "../src/app/api/locale/route",
+      method: "POST",
+      url: "http://localhost:3000/api/locale",
+      body: {},
+    },
+    {
+      name: "POST /api/session/logout (empty body -> 200)",
+      importPath: "../src/app/api/session/logout/route",
+      method: "POST",
+      url: "http://localhost:3000/api/session/logout",
+      body: {},
     },
     {
       name: "POST /api/mailbox/create (empty body -> 400)",
@@ -142,6 +164,13 @@ test("API-01 & API-02: Every API route returns canonical envelope and no-store",
       method: "PATCH",
       url: "http://localhost:3000/api/mailbox/settings",
       body: { acceptsBottles: true },
+    },
+    {
+      name: "POST /api/mailbox/extend (no auth -> 401)",
+      importPath: "../src/app/api/mailbox/extend/route",
+      method: "POST",
+      url: "http://localhost:3000/api/mailbox/extend?username=ghost",
+      body: { durationKey: "24h" },
     },
     {
       name: "POST /api/report (empty body -> 400)",
@@ -248,7 +277,7 @@ test("API-04: RedisLike interface does not expose keys() and provides scan()", a
   assert.ok(items.includes("test:scan:2"));
 });
 
-test("API-05: getPublicMailbox collapses 410 into 404 and does not return expiresAt", async () => {
+test("API-05: getPublicMailbox collapses 410 into 404 and returns expiresAt", async () => {
   const username = "expired_oracle_user";
   const redis = getRedis();
 
@@ -289,15 +318,14 @@ test("API-05: getPublicMailbox collapses 410 into 404 and does not return expire
     gender: "unspecified",
   });
 
-  // Assert getPublicMailbox returns only { exists, name, username, acceptsBottles }
+  // Assert getPublicMailbox returns { exists, name, username, acceptsBottles, expiresAt }
   const pubMeta = await getPublicMailbox(activeUsername);
   assert.equal(pubMeta.exists, true);
   assert.equal(pubMeta.username, activeUsername);
   assert.equal(pubMeta.name, "Live User");
   assert.equal(pubMeta.acceptsBottles, true);
-  assert.equal(
-    (pubMeta as any).expiresAt,
-    undefined,
-    "expiresAt must not be returned by getPublicMailbox"
+  assert.ok(
+    typeof pubMeta.expiresAt === "number" && pubMeta.expiresAt > Date.now(),
+    "expiresAt must be returned by getPublicMailbox (used by the capsule UI)"
   );
 });

@@ -150,3 +150,88 @@ redis.call('INCR', KEYS[4])
 
 return 1
 `;
+
+export const EXTEND_MAILBOX_SCRIPT = `
+-- Atomically extends a mailbox's expiry and refreshes every mailbox-scoped
+-- key's TTL. The extensionsUsed counter is claimed inside the script, so
+-- concurrent requests can never push a mailbox past its lifetime limit.
+--
+-- KEYS[1]: mailbox record (mb:{u})
+-- KEYS[2]: mailbox letters zset (mb:ltrs:{u})
+-- KEYS[3]: unread counter (mb:unread:{u})
+-- KEYS[4]: recovery passcode hash (mb:recover:{u})
+-- KEYS[5]: username reservation lock (mb:name:{u})
+-- KEYS[6]: bottle pool "any"
+-- KEYS[7]: bottle pool for the mailbox's gender (or "any" again)
+-- ARGV[1]: addSeconds (extension length)
+-- ARGV[2]: maxLifetimeSeconds (platform ceiling from creation)
+-- ARGV[3]: maxExtensions (lifetime cap)
+-- ARGV[4]: nowMs
+-- ARGV[5]: letter key prefix (e.g. "ltr:")
+-- ARGV[6]: graceSeconds (extra TTL for recovery/reservation keys)
+
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+  return cjson.encode({ status = "NOT_FOUND" })
+end
+
+local mb = cjson.decode(raw)
+
+if mb.isPermanent == true then
+  return cjson.encode({ status = "PERMANENT" })
+end
+
+local now = tonumber(ARGV[4])
+if tonumber(mb.expiresAt) <= now then
+  return cjson.encode({ status = "EXPIRED" })
+end
+
+local used = tonumber(mb.extensionsUsed) or 0
+if used >= tonumber(ARGV[3]) then
+  return cjson.encode({ status = "EXTENSIONS_EXHAUSTED" })
+end
+
+local maxExpiresAt = tonumber(mb.createdAt) + tonumber(ARGV[2]) * 1000
+local newExpiresAt = math.min(tonumber(mb.expiresAt) + tonumber(ARGV[1]) * 1000, maxExpiresAt)
+if newExpiresAt <= tonumber(mb.expiresAt) then
+  return cjson.encode({ status = "MAX_EXPIRY_REACHED" })
+end
+
+mb.expiresAt = newExpiresAt
+mb.extensionsUsed = used + 1
+
+local ttl = math.max(1, math.ceil((newExpiresAt - now) / 1000))
+redis.call('SET', KEYS[1], cjson.encode(mb), 'EX', ttl)
+redis.call('EXPIRE', KEYS[2], ttl)
+redis.call('EXPIRE', KEYS[3], ttl)
+redis.call('EXPIRE', KEYS[4], ttl + tonumber(ARGV[6]))
+redis.call('EXPIRE', KEYS[5], ttl + tonumber(ARGV[6]))
+
+-- Keep bottle-pool expiry scores in sync, but only for pools that still list
+-- the mailbox (a user who disabled bottles must NOT be re-added).
+for i = 6, 7 do
+  if redis.call('ZSCORE', KEYS[i], mb.usernameLower) then
+    redis.call('ZADD', KEYS[i], newExpiresAt, mb.usernameLower)
+  end
+end
+
+-- Extend every letter's TTL to the new remaining lifetime, but never past a
+-- burn deadline: burn-after-reading letters must die on schedule.
+local ids = redis.call('ZRANGE', KEYS[2], 0, -1)
+for _, id in ipairs(ids) do
+  local lraw = redis.call('GET', ARGV[5] .. id)
+  if lraw then
+    local letter = cjson.decode(lraw)
+    local lttl = ttl
+    if type(letter.burnAt) == "number" and letter.burnAt > now then
+      local bdiff = math.ceil((letter.burnAt - now) / 1000)
+      if bdiff < lttl then lttl = bdiff end
+    end
+    if lttl > 0 then
+      redis.call('EXPIRE', ARGV[5] .. id, lttl)
+    end
+  end
+end
+
+return cjson.encode({ status = "OK", expiresAt = newExpiresAt, extensionsUsed = used + 1 })
+`;
