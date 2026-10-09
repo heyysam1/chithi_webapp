@@ -47,6 +47,10 @@ export async function GET(req: NextRequest) {
       username: mailbox.username,
       gender: mailbox.gender,
       expiresAt: mailbox.expiresAt,
+      createdAt: mailbox.createdAt,
+      // Old records lack the field — default to 0 so the profile UI works.
+      extensionsUsed: mailbox.extensionsUsed ?? 0,
+      isPermanent: mailbox.isPermanent === true,
       unreadCount: Math.max(0, unreadCount),
       totalEnvelopeCount: Math.max(0, totalCount),
       acceptsBottles: mailbox.acceptsBottles,

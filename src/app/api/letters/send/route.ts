@@ -17,7 +17,11 @@ export async function POST(req: NextRequest) {
     const viewerHash = getViewerHash(req);
     const input = await parseJsonBody(req, SendLetterSchema);
 
-    // Prevent Self-Letter Sending Guard per SEC-02
+    // Prevent Self-Letter Sending Guard per SEC-02.
+    // The guard must cover every credential channel, not just cookies: a
+    // mailbox owner authenticating via Authorization: Bearer presents no
+    // chithi_s_* cookie, so check the bearer token against the recipient's
+    // access token hash as well.
     const recipientLower = input.recipient.toLowerCase();
     const allCookies = req.cookies.getAll();
     const selfCookie = allCookies.find((c) => {
@@ -26,15 +30,31 @@ export async function POST(req: NextRequest) {
       return cookieUsername === recipientLower;
     });
 
-    if (selfCookie && selfCookie.value) {
+    const presentedTokens: string[] = [];
+    if (selfCookie?.value) {
+      try {
+        presentedTokens.push(decodeURIComponent(selfCookie.value.trim()));
+      } catch {
+        // Malformed cookie value can never be a valid token; ignore it.
+      }
+    }
+    const authHeader = req.headers.get("authorization");
+    if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+      const bearerToken = authHeader.slice(7).trim();
+      if (bearerToken) presentedTokens.push(bearerToken);
+    }
+
+    if (presentedTokens.length > 0) {
       const redis = getRedis();
       const rawRecipient = await redis.get<string | MailboxRecord>(keys.mailbox(recipientLower));
       if (rawRecipient) {
         const mb: MailboxRecord =
           typeof rawRecipient === "string" ? JSON.parse(rawRecipient) : rawRecipient;
-        const incomingHash = hashWithPepper(decodeURIComponent(selfCookie.value.trim()));
-        if (timingSafeEqual(incomingHash, mb.accessTokenHash)) {
-          return apiErr("FORBIDDEN", "errors.cannotSendToSelf", 403);
+        for (const token of presentedTokens) {
+          const incomingHash = hashWithPepper(token);
+          if (timingSafeEqual(incomingHash, mb.accessTokenHash)) {
+            return apiErr("FORBIDDEN", "errors.cannotSendToSelf", 403);
+          }
         }
       }
     }

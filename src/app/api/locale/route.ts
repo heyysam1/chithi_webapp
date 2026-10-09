@@ -6,6 +6,7 @@ export async function POST(req: NextRequest) {
     const locale = body?.locale === "bn" ? "bn" : "en";
 
     const res = NextResponse.json({ ok: true, locale });
+    res.headers.set("Cache-Control", "no-store");
     res.cookies.set("chithi_locale", locale, {
       path: "/",
       maxAge: 31536000,
@@ -14,6 +15,8 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    const err = NextResponse.json({ ok: false }, { status: 400 });
+    err.headers.set("Cache-Control", "no-store");
+    return err;
   }
 }

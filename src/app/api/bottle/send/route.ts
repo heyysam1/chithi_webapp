@@ -8,6 +8,21 @@ import { getSessionUsername } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Resolves the sender identity used for self-targeting exclusion.
+ * Only a server-verified session cookie is authoritative: `getSessionUsername`
+ * derives the username from `chithi_s_*` cookies (the optional claimed name is
+ * only a disambiguator among those cookies). For a logged-out sender the
+ * client-supplied `senderUsername` is *never* trusted — it is dropped instead
+ * of being used to exclude an arbitrary mailbox from receiving the bottle.
+ */
+export function resolveBottleSender(
+  req: NextRequest,
+  claimedUsername?: string | null
+): string | undefined {
+  return getSessionUsername(req, claimedUsername) ?? undefined;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const rateKey = getRateKey(req);
@@ -21,9 +36,8 @@ export async function POST(req: NextRequest) {
 
     const input = await parseJsonBody(req, SendBottleSchema);
 
-    // Determine sender mailbox to avoid self-targeting (server-authoritative session takes precedence)
-    const sessionUsername = getSessionUsername(req, input.senderUsername);
-    const senderUsername = sessionUsername ?? input.senderUsername?.toLowerCase()?.trim();
+    // Determine sender mailbox to avoid self-targeting (server-authoritative session only)
+    const senderUsername = resolveBottleSender(req, input.senderUsername);
 
     const result = await sendBottle(input, viewerHash, senderUsername);
     return apiOk(result);

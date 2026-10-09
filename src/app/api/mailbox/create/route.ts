@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { CreateMailboxSchema } from "@/lib/schemas";
-import { createMailbox } from "@/lib/mailbox";
+import { createMailbox, isPermanentMailbox } from "@/lib/mailbox";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 import { env } from "@/lib/env";
@@ -20,6 +20,13 @@ export async function POST(req: NextRequest) {
     }
 
     const input = await parseJsonBody(req, CreateMailboxSchema);
+
+    // Reserve the permanent owner username: reject exactly like a taken name
+    // (no signal that it is specially reserved).
+    if (isPermanentMailbox(input.username)) {
+      throw new ApiError("USERNAME_TAKEN", "errors.usernameTaken", 409);
+    }
+
     const created = await createMailbox(input);
 
     const proto = req.headers.get("x-forwarded-proto") || "https";

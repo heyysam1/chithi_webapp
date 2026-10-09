@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { RecoverMailboxSchema } from "@/lib/schemas";
-import { recoverMailbox } from "@/lib/mailbox";
+import { recoverMailbox, recoverPermanentMailbox, isPermanentMailbox } from "@/lib/mailbox";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 
@@ -20,18 +20,32 @@ export async function POST(req: NextRequest) {
     const input = await parseJsonBody(req, RecoverMailboxSchema);
     const usernameLower = input.username.toLowerCase();
 
-    // 2. Rate limit by username: 10 / 1h
-    const rlUser = await checkRateLimit("recover_user", usernameLower);
+    // 2. Rate limit by username+IP pair: 10 / 1h.
+    // The bucket identifier MUST combine the target username with the caller's
+    // rate key. Keying on the bare username would let an attacker burn the
+    // victim's budget (and trip the abuse blocklist for it), locking the real
+    // owner out of recovery — a targeted DoS. Scoping per (username, IP) keeps
+    // brute-force protection (an attacker needs many IPs to multiply attempts)
+    // while never punishing the legitimate owner for someone else's traffic.
+    const rlUser = await checkRateLimit("recover_user", `recover:${usernameLower}:${rateKey}`);
     if (!rlUser.success) {
       return apiErr("RATE_LIMITED", "errors.rateLimited", 429, undefined, rateLimitHeaders(rlUser));
     }
 
-    const recovered = await recoverMailbox(input);
+    // Permanent owner mailbox (env-configured): same endpoint, same response
+    // shape and session issuance as normal recovery — just a different
+    // credential check and no passcode rotation.
+    const recovered = isPermanentMailbox(usernameLower)
+      ? await recoverPermanentMailbox(input)
+      : await recoverMailbox(input);
 
     const response = apiOk({
       name: recovered.name,
       username: recovered.username,
       accessToken: recovered.accessToken,
+      // The recovery passcode is single-use and was rotated by recoverMailbox;
+      // the client must display the new passcode to the user.
+      recoveryPasscode: recovered.recoveryPasscode,
     });
 
     // Update session cookie with rotated access token

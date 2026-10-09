@@ -290,3 +290,29 @@ nextjs-portal,
     transparent 28px
   );
 }
+
+/* ---- Inbox export: clean print output -------------------------------------
+   Hides app chrome (header/footer/nav/buttons) when printing, so the
+   inbox page prints as a plain letter list. Elements can opt out of
+   printing individually with [data-no-print]. */
+@media print {
+  header,
+  footer,
+  nav,
+  button,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

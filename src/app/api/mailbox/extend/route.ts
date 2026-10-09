@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { ReactLetterSchema } from "@/lib/schemas";
-import { reactToLetter } from "@/lib/letters";
+import { ExtendMailboxSchema } from "@/lib/schemas";
+import { EXTEND_DURATIONS } from "@/lib/constants";
+import { extendMailboxExpiry } from "@/lib/mailbox";
 import { requireMailboxOwner } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
@@ -8,16 +9,13 @@ import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  req: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: NextRequest) {
   try {
-    const { id } = await props.params;
     const rateKey = getRateKey(req);
 
-    // Rate limit: 30 reacts / min per IP (§10.1) — matches the feed react route.
-    const rl = await checkRateLimit("react", rateKey);
+    // Rate limit: 10 extensions / hour per IP — owner-only, so this is
+    // just a bound on write amplification, never a legit-use blocker.
+    const rl = await checkRateLimit("extend", rateKey);
     if (!rl.success) {
       return apiErr("RATE_LIMITED", "errors.rateLimited", 429, undefined, rateLimitHeaders(rl));
     }
@@ -30,15 +28,15 @@ export async function POST(
     }
 
     const { mailbox } = await requireMailboxOwner(req, username);
-    const input = await parseJsonBody(req, ReactLetterSchema);
+    const input = await parseJsonBody(req, ExtendMailboxSchema);
 
-    const result = await reactToLetter(mailbox.usernameLower, id, input.reaction);
+    const result = await extendMailboxExpiry(mailbox, EXTEND_DURATIONS[input.durationKey]);
     return apiOk(result);
   } catch (error) {
     if (error instanceof ApiError) {
       return apiErr(error.code, error.messageKey, error.status, error.details);
     }
-    console.error("[POST /api/letters/[id]/react error]", error);
+    console.error("[POST /api/mailbox/extend error]", error);
     return apiErr("INTERNAL", "errors.internal", 500);
   }
 }
