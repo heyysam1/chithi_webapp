@@ -304,6 +304,7 @@ export const en = {
   about: {
     title: "About Chithi · চিঠি",
     tagline: "Quiet thoughts in a noisy world.",
+    developerLink: "About the developer",
     chapters: {
       philosophy: "The Philosophy",
       privacy: "Privacy by Design",
