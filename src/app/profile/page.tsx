@@ -23,9 +23,12 @@ import {
   Inbox,
   AlertCircle,
   Bell,
+  Trash2,
 } from "lucide-react";
 import { useLetterNotifications } from "@/hooks/useLetterNotifications";
 import { useSession } from "@/hooks/useSession";
+import { clearPasscode } from "@/lib/passcodeStorage";
+import { DRAFT_KEY_PREFIX } from "@/lib/draft";
 
 interface ProfileData {
   username: string;
@@ -51,6 +54,10 @@ export default function ProfilePage() {
   // Modals state
   const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
   const [isDisconnectModalOpen, setIsDisconnectModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePasscode, setDeletePasscode] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { token, clearToken } = useAccessToken(activeUsername || undefined);
   const { permission, isSupported, isGranted, requestPermission } =
@@ -139,6 +146,61 @@ export default function ProfilePage() {
     setProfileData(null);
     setIsDisconnectModalOpen(false);
     router.replace("/");
+  };
+
+  // Permanent self-service mailbox deletion. Requires the 6-digit recovery
+  // passcode (re-verified server-side). On success: wipe local passcode +
+  // drafts, drop the session, and land on the homepage.
+  const handleDeleteMailbox = async () => {
+    const username = (profileData?.username || activeUsername || "").toLowerCase();
+    if (!username || isDeleting) return;
+    if (!/^\d{6}$/.test(deletePasscode)) {
+      setDeleteError(t("profile.dangerZone.wrongPasscode"));
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(
+        `/api/mailbox?username=${encodeURIComponent(username)}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ passcode: deletePasscode }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        const code = data?.error?.code;
+        setDeleteError(
+          code === "UNAUTHORIZED"
+            ? t("profile.dangerZone.wrongPasscode")
+            : t("profile.dangerZone.failed")
+        );
+        return;
+      }
+      // Server wiped the mailbox and cleared the session cookie.
+      // Forget everything local: passcode copies + letter drafts.
+      clearPasscode(username);
+      try {
+        const doomed: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(DRAFT_KEY_PREFIX)) doomed.push(k);
+        }
+        for (const k of doomed) localStorage.removeItem(k);
+      } catch {
+        // Storage unavailable — non-fatal.
+      }
+      await logout(username);
+      setProfileData(null);
+      setIsDeleteModalOpen(false);
+      router.replace("/");
+    } catch {
+      setDeleteError(t("profile.dangerZone.failed"));
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const publicUrl =
@@ -436,6 +498,30 @@ token: token,
                 </Button>
               </div>
             </div>
+
+            {/* 6. Danger zone — permanent self-service deletion */}
+            <div className="p-6 sm:p-7 rounded-3xl bg-surface border border-danger/40 shadow-xl space-y-3 transition-colors">
+              <h3 className="text-base font-serif font-bold text-danger">
+                {t("profile.dangerZone.title")}
+              </h3>
+              <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+                {t("profile.dangerZone.desc")}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => {
+                  setDeletePasscode("");
+                  setDeleteError(null);
+                  setIsDeleteModalOpen(true);
+                }}
+                className="w-full sm:w-auto rounded-full border-danger/60 text-danger hover:bg-danger/10 gap-2 text-xs sm:text-sm font-medium cursor-pointer"
+              >
+                <Trash2 size={16} strokeWidth={1.5} />
+                <span>{t("profile.dangerZone.deleteBtn")}</span>
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -487,6 +573,105 @@ token: token,
               className="rounded-full bg-wax hover:bg-wax-pressed text-white cursor-pointer"
             >
               {t("profile.actions.confirmBtn")}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Permanent Deletion Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) setIsDeleteModalOpen(false);
+        }}
+        maxWidth="max-w-md"
+        ariaLabel={t("profile.dangerZone.modalTitle")}
+      >
+        <div className="space-y-4 text-left p-1">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-danger/10 border border-danger/30 flex items-center justify-center text-danger shadow-sm">
+              <Trash2 size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-serif font-bold text-ink">
+                {t("profile.dangerZone.modalTitle")}
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+            {t("profile.dangerZone.modalIntro")}
+          </p>
+
+          <div className="rounded-2xl border border-edge bg-canvas p-4 space-y-2">
+            <p className="text-xs font-bold text-ink">
+              {t("profile.dangerZone.deletedTitle")}
+            </p>
+            <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+              {t("profile.dangerZone.deletedItems")}
+            </p>
+            <p className="text-xs font-bold text-ink pt-1">
+              {t("profile.dangerZone.staysTitle")}
+            </p>
+            <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
+              {t("profile.dangerZone.staysItems")}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="delete-passcode"
+              className="block text-xs sm:text-sm font-medium text-ink"
+            >
+              {t("profile.dangerZone.passcodeLabel")}
+            </label>
+            <input
+              id="delete-passcode"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={6}
+              value={deletePasscode}
+              onChange={(e) =>
+                setDeletePasscode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              placeholder={t("profile.dangerZone.passcodePlaceholder")}
+              disabled={isDeleting}
+              className="w-full rounded-2xl border border-edge bg-canvas px-4 py-3 text-base text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-danger/60 disabled:opacity-50"
+            />
+            {deleteError && (
+              <p className="text-xs sm:text-sm text-danger font-medium" role="alert">
+                {deleteError}
+              </p>
+            )}
+            <p className="text-xs text-danger font-medium">
+              {t("profile.dangerZone.irreversible")}
+            </p>
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              disabled={isDeleting}
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="rounded-full border-edge text-ink-muted cursor-pointer disabled:opacity-50"
+            >
+              {t("profile.dangerZone.cancelBtn")}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              disabled={isDeleting || deletePasscode.length !== 6}
+              onClick={handleDeleteMailbox}
+              className="rounded-full bg-danger hover:bg-danger/90 text-white cursor-pointer disabled:opacity-50"
+              aria-busy={isDeleting}
+            >
+              {isDeleting
+                ? t("profile.dangerZone.deleting")
+                : t("profile.dangerZone.confirmBtn")}
             </Button>
           </div>
         </div>

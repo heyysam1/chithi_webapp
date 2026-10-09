@@ -10,12 +10,13 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSession } from "@/hooks/useSession";
 import { KeyRound, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { bn } from "date-fns/locale";
 import { savePasscodeQuiet } from "@/lib/passcodeStorage";
 
 function RecoverForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { refresh } = useSession();
 
   const queryUsername = searchParams?.get("username") || "";
@@ -26,9 +27,9 @@ function RecoverForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
-  // After a successful recovery the server rotates the passcode (the old one
-  // no longer works), so the new one must be shown before leaving this page.
-  const [recovered, setRecovered] = useState<{ username: string; recoveryPasscode: string; passcodeRotated: boolean } | null>(null);
+  // Only the username is needed after success — the (permanent, never
+  // rotated) passcode is saved silently to the browser and never displayed.
+  const [recovered, setRecovered] = useState<{ username: string } | null>(null);
 
   useEffect(() => {
     if (queryUsername && !username) {
@@ -38,6 +39,7 @@ function RecoverForm() {
 
   const { saveToken } = useAccessToken(username);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const [focusedDigit, setFocusedDigit] = useState(0);
 
   const handleDigitChange = (index: number, val: string) => {
     // Only allow single numeric digit
@@ -70,13 +72,15 @@ function RecoverForm() {
     const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (!pastedData) return;
 
+    // Fill starting from the focused box (L-06), not always from index 0.
+    const startIndex = Math.min(5, Math.max(0, focusedDigit));
     const newDigits = [...digits];
-    for (let i = 0; i < pastedData.length; i++) {
-      newDigits[i] = pastedData[i] || "";
+    for (let i = 0; i < pastedData.length && startIndex + i < 6; i++) {
+      newDigits[startIndex + i] = pastedData[i] || "";
     }
     setDigits(newDigits);
 
-    const nextIndex = Math.min(5, pastedData.length);
+    const nextIndex = Math.min(5, startIndex + pastedData.length);
     inputRefs.current[nextIndex]?.focus();
   };
 
@@ -84,8 +88,16 @@ function RecoverForm() {
     e.preventDefault();
     const passcode = digits.join("");
 
-    if (!name.trim() || !username.trim() || passcode.length !== 6) {
-      setErrorMsg(t("errors.validation.failed"));
+    if (!name.trim()) {
+      setErrorMsg(t("errors.validation.nameRequired"));
+      return;
+    }
+    if (!username.trim()) {
+      setErrorMsg(t("errors.validation.usernameRequired"));
+      return;
+    }
+    if (passcode.length !== 6) {
+      setErrorMsg(t("errors.validation.passcodeLength"));
       return;
     }
 
@@ -110,15 +122,13 @@ function RecoverForm() {
         saveToken(json.data.accessToken);
         await refresh();
         // Do NOT redirect yet: show the slim "Access Restored" confirmation.
-        // The rotated passcode is saved silently (no one-time key card popup —
+        // The permanent passcode is saved silently (no one-time key card popup —
         // that card appears only once, right after mailbox creation).
         if (typeof window !== "undefined" && json.data.recoveryPasscode) {
           savePasscodeQuiet(String(json.data.username), json.data.recoveryPasscode);
         }
         setRecovered({
           username: json.data.username,
-          recoveryPasscode: json.data.recoveryPasscode,
-          passcodeRotated: json.data.passcodeRotated !== false,
         });
       } else {
         if (res.status === 429) {
@@ -140,17 +150,21 @@ function RecoverForm() {
   return (
     <PageShell>
       <div className="max-w-md mx-auto py-12 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl border border-warn-edge flex items-center justify-center text-wax bg-warn-surface mx-auto mb-3 shadow-sm">
-            <KeyRound size={22} strokeWidth={1.5} aria-hidden="true" />
+        {/* Owner request: hide the "Recover Mailbox" header once access is
+            restored — only the slim success card should remain. */}
+        {!recovered && (
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl border border-warn-edge flex items-center justify-center text-wax bg-warn-surface mx-auto mb-3 shadow-sm">
+              <KeyRound size={22} strokeWidth={1.5} aria-hidden="true" />
+            </div>
+            <h1 className="text-2xl font-serif font-bold text-ink">
+              {t("recover.title")}
+            </h1>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              {t("recover.subtitle")}
+            </p>
           </div>
-          <h1 className="text-2xl font-serif font-bold text-ink">
-            {t("recover.title")}
-          </h1>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            {t("recover.subtitle")}
-          </p>
-        </div>
+        )}
 
         <div className="border border-edge rounded-2xl sm:rounded-3xl bg-surface p-4 sm:p-8 shadow-xl relative">
 
@@ -211,18 +225,20 @@ function RecoverForm() {
                   <input
                     key={idx}
                     id={`passcode-digit-${idx + 1}`}
-                    aria-label={`Digit ${idx + 1}`}
+                    aria-label={t("recover.digitAria", { index: idx + 1 })}
                     ref={(el) => {
                       inputRefs.current[idx] = el;
                     }}
                     type="text"
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     pattern="[0-9]*"
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
                     onPaste={handlePaste}
+                    onFocus={() => setFocusedDigit(idx)}
                     className="flex-1 min-w-0 max-w-[48px] h-12 sm:h-14 text-center font-mono text-lg sm:text-xl font-bold bg-surface text-ink border border-edge rounded-xl sm:rounded-2xl focus:outline-none focus:border-wax focus:ring-1 focus:ring-wax transition-all"
                   />
                 ))}
@@ -238,7 +254,7 @@ function RecoverForm() {
                 <AlertTriangle size={16} strokeWidth={1.5} className="shrink-0" aria-hidden="true" />
                 <span>
                   {errorMsg}
-                  {retryAfter ? ` (retry ${formatDistanceToNow(new Date(Date.now() + retryAfter * 1000), { addSuffix: true })})` : null}
+                  {retryAfter ? ` (retry ${formatDistanceToNow(new Date(Date.now() + retryAfter * 1000), { addSuffix: true, locale: locale === "bn" ? bn : undefined })})` : null}
                 </span>
               </div>
             )}

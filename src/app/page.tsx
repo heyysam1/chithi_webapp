@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -63,7 +64,7 @@ export default function HomePage() {
   const [isUsernameManuallyEdited, setIsUsernameManuallyEdited] = useState(false);
   const [durationKey, setDurationKey] = useState<DurationKey>("24h");
   const [gender, setGender] = useState<Gender>("unspecified");
-  const [availability, setAvailability] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const [availability, setAvailability] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [takenMailboxName, setTakenMailboxName] = useState<string | null>(null);
@@ -72,6 +73,19 @@ export default function HomePage() {
   // Send / Find Mailbox State (shared by both Guest Tab 2 and Authenticated Hub)
   const [searchUsername, setSearchUsername] = useState("");
   const [searchStatus, setSearchStatus] = useState<"idle" | "checking" | "found" | "not_found">("idle");
+
+  // L-11: show the real host instead of a hardcoded domain. Defaults to the
+  // old literal for the first (SSR) render to avoid hydration mismatch.
+  const [domainPrefix, setDomainPrefix] = useState("chithi.site");
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && window.location.host) {
+        setDomainPrefix(window.location.host);
+      }
+    } catch {
+      // keep default
+    }
+  }, []);
 
   // 3. Username availability check debounced 400ms with automatic collision resolution for suggestions
   // Sequence guard: stale responses from earlier keystrokes must not
@@ -86,7 +100,7 @@ export default function HomePage() {
     }
 
     if (!USERNAME_REGEX.test(trimmed)) {
-      setAvailability("taken");
+      setAvailability("invalid");
       return;
     }
 
@@ -188,7 +202,14 @@ export default function HomePage() {
       return;
     }
 
-    if (availability === "taken") {
+    if (!USERNAME_REGEX.test(trimmedUsername)) {
+      const invalidMsg = t("errors.validation.usernameInvalid");
+      setFormError(invalidMsg);
+      showToast(invalidMsg, "warn");
+      return;
+    }
+
+    if (availability === "taken" || availability === "invalid") {
       const takenMsg = t("home.usernameTaken");
       setFormError(takenMsg);
       setTakenMailboxName(trimmedUsername);
@@ -267,7 +288,21 @@ export default function HomePage() {
             SCENARIO A — ACTIVE LOGGED-IN MAILBOX (Section 9)
             Strictly hide Create Mailbox form. Render Authenticated Mailbox Hub.
            ========================================================================= */}
-        {isAuthenticated && activeUser && !createdMailbox ? (
+        {/* M-01: while the session check is in flight, render a skeleton instead
+            of the guest hero so logged-in users never see a content flash. */}
+        {isSessionLoading ? (
+          <section className="pt-6 md:pt-12 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start" aria-busy="true" aria-label="Loading">
+            <div className="lg:col-span-6 space-y-6">
+              <Skeleton className="h-8 w-44 rounded-full" />
+              <Skeleton className="h-14 w-3/4 rounded-2xl" />
+              <Skeleton className="h-5 w-full max-w-lg rounded-full" />
+              <Skeleton className="h-5 w-2/3 max-w-lg rounded-full" />
+            </div>
+            <div className="lg:col-span-6">
+              <Skeleton className="h-[420px] w-full rounded-3xl" />
+            </div>
+          </section>
+        ) : isAuthenticated && activeUser && !createdMailbox ? (
           <section className="pt-4 md:pt-8 space-y-8">
             {/* 1. Welcoming Banner Card */}
             <div className="relative p-6 sm:p-10 rounded-3xl bg-surface border border-edge shadow-[0_12px_32px_-8px_rgba(78,59,44,0.06)] dark:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)] overflow-hidden transition-colors">
@@ -350,12 +385,13 @@ export default function HomePage() {
               <div className="space-y-3 max-w-xl">
                 <div className="relative flex items-center">
                   <span className="absolute left-4 text-xs font-mono text-ink-muted select-none pointer-events-none">
-                    chithi.site/
+                    {domainPrefix}/
                   </span>
                   <Input
                     value={searchUsername}
                     onChange={(e) => setSearchUsername(e.target.value.replace(/\s+/g, ""))}
                     placeholder="username"
+                    aria-label="Recipient username"
                     maxLength={20}
                     className="pl-28 rounded-full"
                   />
@@ -395,14 +431,11 @@ export default function HomePage() {
                   size="md"
                   disabled={searchStatus !== "found"}
                   onClick={() => router.push(`/${searchUsername.trim().toLowerCase()}`)}
-                  className="rounded-full gap-2 text-sm"
+                  className="rounded-full text-sm max-w-full"
                 >
-                  <span>
-                    {locale === "bn"
-                      ? `@${searchUsername || "..."}-কে চিঠি লিখুন`
-                      : `Write Letter to @${searchUsername || "..."}`}
+                  <span className="truncate min-w-0">
+                    {t("home.hub.writeLetter", { username: searchUsername.trim().toLowerCase() || "..." })}
                   </span>
-                  <ArrowRight size={16} strokeWidth={1.5} />
                 </Button>
               </div>
             </div>
@@ -487,12 +520,13 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => setActiveTab("create")}
+                      aria-pressed={activeTab === "create"}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-xs sm:text-sm font-medium transition-colors relative z-10 ${
                         activeTab === "create" ? "text-ink" : "text-ink-muted hover:text-ink"
                       }`}
                     >
                       <Mail size={16} strokeWidth={1.5} className={activeTab === "create" ? "text-wax" : ""} />
-                      <span>{locale === "bn" ? "চিঠি পাওয়ার ঠিকানা" : "Create Mailbox"}</span>
+                      <span className="whitespace-nowrap">{locale === "bn" ? "চিঠি পাওয়ার ঠিকানা" : "Create Mailbox"}</span>
                       {activeTab === "create" && (
                         <motion.div
                           layoutId="activeHeroTab"
@@ -505,12 +539,13 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => setActiveTab("send")}
+                      aria-pressed={activeTab === "send"}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full text-xs sm:text-sm font-medium transition-colors relative z-10 ${
                         activeTab === "send" ? "text-ink" : "text-ink-muted hover:text-ink"
                       }`}
                     >
                       <Send size={16} strokeWidth={1.5} className={activeTab === "send" ? "text-wax" : ""} />
-                      <span>{locale === "bn" ? "কাউকে চিঠি পাঠান" : "Send a Letter"}</span>
+                      <span className="whitespace-nowrap">{locale === "bn" ? "কাউকে চিঠি পাঠান" : "Send a Letter"}</span>
                       {activeTab === "send" && (
                         <motion.div
                           layoutId="activeHeroTab"
@@ -541,10 +576,11 @@ export default function HomePage() {
                         <form onSubmit={handleCreate} className="space-y-5">
                           {/* Name Field (Required) with Live Username Auto-Suggestion */}
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
+                            <label htmlFor="home-name" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                               {locale === "bn" ? "আপনার নাম" : "Your Name"}
                             </label>
                             <Input
+                              id="home-name"
                               value={name}
                               onChange={handleNameChange}
                               placeholder={locale === "bn" ? "যেমন: রহিম আহমেদ" : "e.g. Rahim Ahmed"}
@@ -556,7 +592,7 @@ export default function HomePage() {
                           {/* Username Field with Live Validation & Editable Suggestion */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
+                              <label htmlFor="home-username" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                                 {t("home.usernameLabel")}
                               </label>
                               {isUsernameManuallyEdited && (
@@ -576,6 +612,7 @@ export default function HomePage() {
                             </div>
                             <div className="relative">
                               <Input
+                                id="home-username"
                                 value={username}
                                 onChange={handleUsernameChange}
                                 placeholder={t("home.usernamePlaceholder")}
@@ -589,7 +626,7 @@ export default function HomePage() {
                                 {availability === "available" && (
                                   <CheckCircle size={16} className="text-success" />
                                 )}
-                                {availability === "taken" && (
+                                {(availability === "taken" || availability === "invalid") && (
                                   <XCircle size={16} className="text-wax" />
                                 )}
                               </div>
@@ -606,17 +643,22 @@ export default function HomePage() {
                                   {t("home.usernameTaken")}
                                 </span>
                               )}
+                              {availability === "invalid" && (
+                                <span className="text-wax font-medium">
+                                  {t("errors.validation.usernameInvalid")}
+                                </span>
+                              )}
                             </div>
                           </div>
 
                           {/* Lifespan Segmented Options (12h, 24h, 3d, 7d) */}
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
+                              <label id="home-duration-label" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                                 {t("home.durationLabel")}
                               </label>
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-4 gap-2" role="group" aria-labelledby="home-duration-label">
                               {durationOptions.map((key) => {
                                 const isSelected = durationKey === key;
                                 const durationSeconds = DURATIONS[key];
@@ -628,6 +670,7 @@ export default function HomePage() {
                                     key={key}
                                     type="button"
                                     onClick={() => setDurationKey(key)}
+                                    aria-pressed={isSelected}
                                     className={`py-2 px-1 text-center font-mono text-xs rounded-xl border transition-all select-none cursor-pointer ${
                                       isSelected
                                         ? "bg-peach border-peach-hover text-peach-text ring-1 ring-peach-hover font-bold shadow-sm"
@@ -643,10 +686,11 @@ export default function HomePage() {
 
                           {/* Optional Gender for Bottle routing */}
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
+                            <label htmlFor="home-gender" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                               {t("home.genderLabel")}
                             </label>
                             <Select
+                              id="home-gender"
                               value={gender}
                               onChange={(e) => setGender(e.target.value as Gender)}
                             >
@@ -690,7 +734,7 @@ export default function HomePage() {
                             size="lg"
                             className="w-full mt-2 rounded-full cursor-pointer"
                             isLoading={isSubmitting}
-                            disabled={availability === "taken"}
+                            disabled={availability === "taken" || availability === "invalid"}
                           >
                             {t("home.submitCreate")}
                           </Button>
@@ -729,14 +773,15 @@ export default function HomePage() {
 
                         <div className="space-y-4">
                           <div className="space-y-1.5">
-                            <label className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
+                            <label htmlFor="send-recipient" className="block text-xs font-mono uppercase tracking-wider text-ink-muted">
                               {locale === "bn" ? "প্রাপকের ডাকবাক্স" : "Recipient Username"}
                             </label>
                             <div className="relative flex items-center">
                               <span className="absolute left-4 text-xs font-mono text-ink-muted select-none pointer-events-none">
-                                chithi.site/
+                                {domainPrefix}/
                               </span>
                               <Input
+                                id="send-recipient"
                                 value={searchUsername}
                                 onChange={(e) => setSearchUsername(e.target.value.replace(/\s+/g, ""))}
                                 placeholder="username"
