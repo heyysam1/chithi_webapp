@@ -112,4 +112,16 @@ export const keys = {
    */
   abuseCount: (rateKey: string): string =>
     `abuse:count:${rateKey}`,
+
+  /**
+   * Admin maintenance-mode flag: admin:maintenance ("1" = enabled)
+   */
+  adminMaintenance: (): string => "admin:maintenance",
+
+  /**
+   * Daily aggregate metric counter: stats:{metric}:{YYYY-MM-DD}
+   * Aggregate only — never stores identities. TTL 400 days.
+   */
+  metricDay: (metric: string, dateStr: string): string =>
+    `stats:${metric}:${dateStr}`,
 } as const;

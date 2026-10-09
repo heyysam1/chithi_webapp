@@ -169,6 +169,10 @@ export type ErrorCode =
   | "MAX_EXPIRY_REACHED"
   | "REPLY_DEPTH_EXCEEDED"
   | "PERMANENT_MAILBOX"
+  | "NO_ADMIN_SESSION"
+  | "NOT_OWNER_MAILBOX"
+  | "ADMIN_NOT_CONFIGURED"
+  | "INVALID_CREDENTIALS"
   | "INTERNAL";
 
 export interface ApiOk<T> {

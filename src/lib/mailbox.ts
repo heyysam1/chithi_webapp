@@ -11,8 +11,10 @@ import { env } from "./env";
 
 export const TTL_GRACE_S = 60;
 
-/** Logical expiry for the env-configured permanent owner mailbox: 2100-01-01T00:00:00Z. */
-export const PERMANENT_EXPIRES_AT = 4102444800000;
+// PERMANENT_EXPIRES_AT lives in ./constants (client-safe); imported for
+// local use and re-exported for existing server-side imports.
+import { PERMANENT_EXPIRES_AT } from "./constants";
+export { PERMANENT_EXPIRES_AT };
 
 /**
  * Redis EX/EXPIRE cannot exceed 2^31-1 seconds (~68 years). The permanent

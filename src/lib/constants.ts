@@ -89,6 +89,9 @@ export const MAX_EXTENSIONS_PER_MAILBOX = 3;
 /** Platform ceiling: a mailbox may never live longer than 7 days from creation. */
 export const PLATFORM_MAX_LIFETIME_S = 7 * 86400;
 
+/** Logical expiry for the env-configured permanent owner mailbox: 2100-01-01T00:00:00Z. Client-safe (no server imports). */
+export const PERMANENT_EXPIRES_AT = 4102444800000;
+
 export const FEED_TTL_S = 172800; // 48 hours
 export const MAX_JSON_BODY_BYTES = 16_384;
 export const PASSCODE_LENGTH = 6;
