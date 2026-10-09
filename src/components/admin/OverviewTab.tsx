@@ -11,7 +11,7 @@ import {
   type SeriesPoint,
 } from "@/lib/adminApi";
 import { StatCard } from "./StatCard";
-import { BarChart } from "./BarChart";
+import { AreaChart } from "./AreaChart";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -242,7 +242,7 @@ export function OverviewTab() {
         ) : chartLoading ? (
           <Skeleton className="h-[220px] w-full" />
         ) : (
-          <BarChart points={points} emptyLabel={t("admin.overview.noData")} />
+          <AreaChart points={points} emptyLabel={t("admin.overview.noData")} />
         )}
       </div>
 

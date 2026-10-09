@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { LogOut, ShieldCheck } from "lucide-react";
+import {
+  Flag,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Package,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/hooks/useLocale";
 
@@ -47,6 +57,16 @@ export interface AdminShellProps {
   tabs: AdminTab[];
 }
 
+const TAB_ICONS: Record<AdminTabId, React.ReactNode> = {
+  overview: <LayoutDashboard size={17} strokeWidth={1.5} />,
+  mailboxes: <Mail size={17} strokeWidth={1.5} />,
+  bottles: <Package size={17} strokeWidth={1.5} />,
+  features: <Sparkles size={17} strokeWidth={1.5} />,
+  reports: <Flag size={17} strokeWidth={1.5} />,
+  users: <Users size={17} strokeWidth={1.5} />,
+  system: <Settings size={17} strokeWidth={1.5} />,
+};
+
 export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
   const { t } = useLocale();
   const [activeTab, setActiveTab] = useState<AdminTabId>("overview");
@@ -55,46 +75,35 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
     tabs.map((tab) => [tab.id, tab.content])
   );
   const activeContent = byId.get(activeTab);
+  const visibleTabs = ADMIN_TAB_ORDER.filter((id) => byId.has(id));
+
+  const navItemClass = (isActive: boolean) =>
+    `w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm border transition-colors cursor-pointer ${
+      isActive
+        ? "bg-peach/50 border-peach-hover/40 text-ink font-semibold"
+        : "border-transparent text-ink-muted hover:text-ink hover:bg-canvas"
+    }`;
 
   return (
-    <div className="min-h-screen bg-canvas transition-colors">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {/* Header */}
-        <div className="relative p-5 sm:p-6 rounded-3xl bg-surface border border-edge shadow-xl overflow-hidden transition-colors">
-          <div className="absolute -top-2 left-10 w-24 h-5 washi-tape-sage rounded-sm pointer-events-none" />
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-peach/50 border border-edge flex items-center justify-center text-wax shadow-sm shrink-0">
-                <ShieldCheck size={20} strokeWidth={1.5} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-serif font-bold text-ink truncate">
-                  {t("admin.shell.title")}
-                </h1>
-                <span className="inline-block mt-0.5 text-[11px] font-mono uppercase tracking-wider text-ink-muted bg-canvas border border-edge rounded-full px-2.5 py-0.5">
-                  @{username}
-                </span>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onLogout}
-              className="gap-2 shrink-0 cursor-pointer"
-            >
-              <LogOut size={15} strokeWidth={1.5} />
-              <span className="hidden sm:inline">{t("admin.shell.logout")}</span>
-            </Button>
+    <div className="min-h-screen bg-canvas transition-colors md:flex">
+      {/* Desktop left sidebar */}
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-edge bg-surface px-4 py-6 sticky top-0 h-screen">
+        <div className="flex items-center gap-3 px-2">
+          <div className="w-10 h-10 rounded-2xl bg-peach/50 border border-edge flex items-center justify-center text-wax shadow-sm shrink-0">
+            <ShieldCheck size={18} strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-serif font-bold text-ink leading-tight truncate">
+              {t("admin.shell.title")}
+            </p>
+            <p className="text-[11px] font-mono text-ink-muted truncate">
+              @{username}
+            </p>
           </div>
         </div>
 
-        {/* Tab nav */}
-        <nav
-          aria-label={t("admin.shell.navLabel")}
-          className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1"
-        >
-          {ADMIN_TAB_ORDER.filter((id) => byId.has(id)).map((id) => {
+        <nav aria-label={t("admin.shell.navLabel")} className="mt-8 space-y-1 flex-1">
+          {visibleTabs.map((id) => {
             const isActive = id === activeTab;
             return (
               <button
@@ -102,22 +111,80 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
                 type="button"
                 onClick={() => setActiveTab(id)}
                 aria-current={isActive ? "page" : undefined}
-                className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-medium border transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-peach border-peach-hover text-peach-text shadow-sm font-semibold"
-                    : "bg-surface border-edge text-ink-muted hover:text-ink hover:border-wax"
-                }`}
+                className={navItemClass(isActive)}
               >
-                {t(`admin.nav.${id}`)}
+                <span className={isActive ? "text-wax" : "text-ink-muted"}>
+                  {TAB_ICONS[id]}
+                </span>
+                <span>{t(`admin.nav.${id}`)}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Tab content */}
-        <main key={activeTab} className="animate-fadeIn">
-          {activeContent}
-        </main>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onLogout}
+          className="justify-start gap-3 px-3.5 cursor-pointer"
+        >
+          <LogOut size={17} strokeWidth={1.5} />
+          <span>{t("admin.shell.logout")}</span>
+        </Button>
+      </aside>
+
+      {/* Mobile compact top bar */}
+      <div className="md:hidden sticky top-0 z-20 bg-surface/95 backdrop-blur border-b border-edge">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="w-9 h-9 rounded-xl bg-peach/50 border border-edge flex items-center justify-center text-wax shrink-0">
+            <ShieldCheck size={16} strokeWidth={1.5} />
+          </div>
+          <p className="font-serif font-bold text-ink truncate flex-1">
+            {t("admin.shell.title")}
+          </p>
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label={t("admin.shell.logout")}
+            className="w-9 h-9 rounded-xl border border-edge text-ink-muted hover:text-ink flex items-center justify-center cursor-pointer"
+          >
+            <LogOut size={16} strokeWidth={1.5} />
+          </button>
+        </div>
+        <nav
+          aria-label={t("admin.shell.navLabel")}
+          className="flex gap-1.5 overflow-x-auto px-4 pb-3"
+        >
+          {visibleTabs.map((id) => {
+            const isActive = id === activeTab;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                aria-current={isActive ? "page" : undefined}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                  isActive
+                    ? "bg-peach/60 border-peach-hover/40 text-ink font-semibold"
+                    : "bg-surface border-edge text-ink-muted"
+                }`}
+              >
+                {TAB_ICONS[id]}
+                <span>{t(`admin.nav.${id}`)}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          <main key={activeTab} className="animate-fadeIn">
+            {activeContent}
+          </main>
+        </div>
       </div>
     </div>
   );
