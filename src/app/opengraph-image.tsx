@@ -19,9 +19,9 @@ const INK = THEME_COLORS.inkHeading.light;
 const INK_MUTED = THEME_COLORS.inkMuted.light;
 const PEACH = THEME_COLORS.wax.light;
 
-// Stamp paper asset is landscape 760x420; centered on the card.
-const STAMP_W = 760;
-const STAMP_H = 420;
+// Stamp paper asset is portrait 450x605; centered on the card.
+const STAMP_W = 417;
+const STAMP_H = 560;
 const STAMP_LEFT = (size.width - STAMP_W) / 2;
 const STAMP_TOP = (size.height - STAMP_H) / 2;
 
@@ -73,31 +73,31 @@ export default async function Image() {
         >
           <img
             src={logoSrc}
-            width={104}
-            height={104}
-            style={{ marginBottom: 20, borderRadius: 24 }}
+            width={88}
+            height={88}
+            style={{ marginBottom: 18, borderRadius: 20 }}
           />
           <div
             style={{
-              fontSize: 76,
+              fontSize: 56,
               fontFamily: "serif",
               fontWeight: 700,
               color: INK,
               letterSpacing: "-0.02em",
-              marginBottom: 14,
+              marginBottom: 12,
             }}
           >
             MyChithi
           </div>
           <div
             style={{
-              fontSize: 26,
+              fontSize: 21,
               color: INK_MUTED,
               textAlign: "center",
               lineHeight: 1.5,
               fontFamily: "serif",
               fontStyle: "italic",
-              marginBottom: 26,
+              marginBottom: 24,
             }}
           >
             Anonymous letters that vanish after reading.
