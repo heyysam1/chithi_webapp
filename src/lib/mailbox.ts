@@ -119,7 +119,15 @@ export async function createMailbox(input: CreateMailboxInput): Promise<{
     });
   }
 
-  await pipeline.exec();
+  try {
+    await pipeline.exec();
+  } catch (err) {
+    // Don't squat the username on partial failure: release the reservation
+    // so the user can retry immediately instead of hitting USERNAME_TAKEN
+    // for the rest of the reservation TTL.
+    await redis.del(keys.mailboxReservation(usernameLower)).catch(() => {});
+    throw err;
+  }
 
   return {
     username: input.username,
@@ -137,6 +145,32 @@ export async function recoverMailbox(input: RecoverMailboxInput): Promise<{
 }> {
   const redis = getRedis();
   const usernameLower = input.username.toLowerCase();
+
+  // Serialize concurrent recoveries for the same mailbox: the access-token
+  // rotation below is read-modify-write, so two racing recoveries would both
+  // succeed and the second would invalidate the first's fresh token.
+  const lockKey = `lock:recover:${usernameLower}`;
+  const locked = await redis.set(lockKey, "1", { nx: true, ex: 30 });
+  if (!locked) {
+    throw new ApiError("RATE_LIMITED", "errors.rateLimited", 429);
+  }
+  try {
+    return await recoverMailboxInner(input, usernameLower);
+  } finally {
+    await redis.del(lockKey).catch(() => {});
+  }
+}
+
+async function recoverMailboxInner(
+  input: RecoverMailboxInput,
+  usernameLower: string
+): Promise<{
+  name?: string;
+  username: string;
+  accessToken: string;
+  recoveryPasscode: string;
+}> {
+  const redis = getRedis();
 
   const storedPasscodeHash = await redis.get<string>(
     keys.mailboxRecovery(usernameLower)
@@ -185,17 +219,13 @@ export async function recoverMailbox(input: RecoverMailboxInput): Promise<{
   mailbox.accessTokenHash = hashWithPepper(newAccessToken);
   mailbox.lastLoginAt = Date.now();
 
-  // Rotate the recovery passcode as well (single-use semantics): a passcode
-  // captured once must not grant indefinite re-recovery and repeated owner
-  // lockout. The caller must surface the new passcode to the user.
-  const newRecoveryPasscode = generateRecoveryPasscode();
+  // The recovery passcode is permanent: one passcode per mailbox for the
+  // whole account lifetime. It was verified above and is never rotated here.
+  // (Only the access token rotates, per login, for session hygiene.)
 
   const ttl = keyTtlSeconds(mailbox);
   const pipeline = redis.pipeline();
   pipeline.set(keys.mailbox(usernameLower), JSON.stringify(mailbox), {
-    ex: ttl,
-  });
-  pipeline.set(keys.mailboxRecovery(usernameLower), hashWithPepper(newRecoveryPasscode), {
     ex: ttl,
   });
   pipeline.zadd(keys.activeIndex(), { score: mailbox.lastLoginAt, member: usernameLower });
@@ -205,7 +235,7 @@ export async function recoverMailbox(input: RecoverMailboxInput): Promise<{
     name: mailbox.name,
     username: mailbox.username,
     accessToken: newAccessToken,
-    recoveryPasscode: newRecoveryPasscode,
+    recoveryPasscode: input.passcode,
   };
 }
 
@@ -424,6 +454,29 @@ export async function purgeInactiveMailbox(username: string): Promise<void> {
   pipeline.zrem(keys.activeIndex(), usernameLower);
 
   await pipeline.exec();
+
+  // 5. Remove flood-guard keys for this recipient (flood:*:{usernameLower}).
+  //    They self-expire in 10 minutes, but purging them avoids orphans.
+  // 6. Remove bottle-pair delivery guards (bottle:pair:*:{usernameLower}).
+  //    They self-expire in 24h, but purging them avoids orphans.
+  for (const pattern of [`flood:*:${usernameLower}`, `bottle:pair:*:${usernameLower}`]) {
+    try {
+      let cursor = "0";
+      for (;;) {
+        const [next, found] = await redis.scan(cursor, {
+          match: pattern,
+          count: 100,
+        });
+        if (found.length > 0) {
+          await redis.del(...found);
+        }
+        if (next === "0") break;
+        cursor = next;
+      }
+    } catch {
+      // Best-effort: orphan keys self-expire via their own TTL.
+    }
+  }
 }
 
 /**

@@ -70,3 +70,14 @@ export function clearOneTimePasscode(username: string): void {
     // ignore
   }
 }
+
+/** Fully forget a mailbox's passcode on this device (both storages). */
+export function clearPasscode(username: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(key(username));
+    sessionStorage.removeItem(key(username));
+  } catch {
+    // ignore
+  }
+}

@@ -102,45 +102,34 @@ test.skipIf(!hasRealRedis)(
   }
 );
 
-test("H-1: recoverMailbox rotates the recovery passcode (single-use)", async () => {
-  const username = uname("rotation");
+test("H-1: recoverMailbox keeps the recovery passcode permanent (no rotation)", async () => {
+  const username = uname("permanent");
   const created = await createMailbox({
     username,
-    name: "Rotation Tester",
+    name: "Permanent Tester",
     durationKey: "24h",
     gender: "unspecified",
   });
 
   const first = await recoverMailbox({
     username,
-    name: "Rotation Tester",
+    name: "Permanent Tester",
     passcode: created.recoveryPasscode,
   });
   assert.match(first.recoveryPasscode, /^\d{6}$/);
-  assert.notEqual(
+  assert.equal(
     first.recoveryPasscode,
     created.recoveryPasscode,
-    "recovery must mint a fresh passcode"
+    "recovery must NOT change the passcode"
   );
 
-  // The old (possibly leaked) passcode is now dead.
-  await assert.rejects(
-    () => recoverMailbox({ username, name: "Rotation Tester", passcode: created.recoveryPasscode }),
-    (err: unknown) => {
-      assert.ok(err instanceof ApiError);
-      assert.equal(err.status, 401);
-      return true;
-    },
-    "old passcode must be rejected after rotation"
-  );
-
-  // The new passcode works exactly once more, then rotates again.
+  // The same passcode keeps working for later recoveries.
   const second = await recoverMailbox({
     username,
-    name: "Rotation Tester",
-    passcode: first.recoveryPasscode,
+    name: "Permanent Tester",
+    passcode: created.recoveryPasscode,
   });
-  assert.notEqual(second.recoveryPasscode, first.recoveryPasscode);
+  assert.equal(second.recoveryPasscode, created.recoveryPasscode);
   assert.ok(second.accessToken);
 });
 

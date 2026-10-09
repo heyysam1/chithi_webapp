@@ -235,3 +235,16 @@ end
 
 return cjson.encode({ status = "OK", expiresAt = newExpiresAt, extensionsUsed = used + 1 })
 `;
+
+/**
+ * Atomically increments an abuse-violation counter and sets its TTL on
+ * first write. INCR-then-EXPIRE in two round-trips can orphan the key
+ * (no TTL) if the process dies between them.
+ */
+export const ABUSE_INCR_SCRIPT = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+`;

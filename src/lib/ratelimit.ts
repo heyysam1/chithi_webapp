@@ -3,6 +3,7 @@ import { Redis } from "@upstash/redis";
 import { env } from "./env";
 import { getRedis } from "./redis";
 import { keys } from "./keys";
+import { ABUSE_INCR_SCRIPT } from "./scripts";
 
 export type LimiterBucket =
   | "create"
@@ -18,7 +19,9 @@ export type LimiterBucket =
   | "exchange"
   | "settings"
   | "extend"
-  | "music_search";
+  | "music_search"
+  | "admin_action"
+  | "delete_account";
 
 export interface RateLimitResult {
   success: boolean;
@@ -186,6 +189,31 @@ const limiters: Record<LimiterBucket, Ratelimit | null> = {
         analytics: false,
       })
     : null,
+
+  // Destructive admin actions (owner-only): 60/min per admin. Single
+  // trusted user, so this only matters if a session is ever compromised —
+  // it bounds high-speed mass deletion.
+  admin_action: redisClient
+    ? new Ratelimit({
+        redis: redisClient,
+        limiter: Ratelimit.slidingWindow(60, "1 m"),
+        prefix: "rl:admin:action",
+        ephemeralCache,
+        analytics: false,
+      })
+    : null,
+
+  // Self-service mailbox deletion: 3/hour per IP. Destructive and
+  // irreversible — a tight bound is deliberate here.
+  delete_account: redisClient
+    ? new Ratelimit({
+        redis: redisClient,
+        limiter: Ratelimit.slidingWindow(3, "1 h"),
+        prefix: "rl:delete:account",
+        ephemeralCache,
+        analytics: false,
+      })
+    : null,
 };
 
 // Abuse tracking constants (§SEC-04)
@@ -217,6 +245,28 @@ export async function checkAbuseBlock(
 }
 
 /**
+ * Atomically increments the abuse counter and sets its TTL on first write
+ * via Lua. Falls back to non-atomic INCR+EXPIRE only on the dev shim,
+ * which has no Lua support (production always has real Redis).
+ */
+async function incrAbuseCounter(countKey: string): Promise<number> {
+  const redis = getRedis();
+  try {
+    return await redis.eval<number>(
+      ABUSE_INCR_SCRIPT,
+      [countKey],
+      [ABUSE_VIOLATION_WINDOW_SECS]
+    );
+  } catch {
+    const violations = await redis.incr(countKey);
+    if (violations === 1) {
+      await redis.expire(countKey, ABUSE_VIOLATION_WINDOW_SECS);
+    }
+    return violations;
+  }
+}
+
+/**
  * Records a rate limit violation against an identifier.
  * Automatically establishes a temporary Redis block if threshold is crossed.
  */
@@ -228,10 +278,7 @@ export async function recordAbuseViolation(
     const countKey = keys.abuseCount(identifier);
     const blockKey = keys.abuseBlock(identifier);
 
-    const violations = await redis.incr(countKey);
-    if (violations === 1) {
-      await redis.expire(countKey, ABUSE_VIOLATION_WINDOW_SECS);
-    }
+    const violations = await incrAbuseCounter(countKey);
 
     if (violations >= ABUSE_THRESHOLD) {
       const duration =
@@ -250,6 +297,63 @@ export async function recordAbuseViolation(
 }
 
 let hasWarnedDevShim = false;
+
+/**
+ * Auth-sensitive buckets that must NEVER fail open: if Redis is down,
+ * brute-forcing the 6-digit recovery passcode (or probing the session
+ * exchange oracle) at full speed would be catastrophic. These get a
+ * conservative process-local sliding-window fallback instead.
+ */
+const AUTH_SENSITIVE_BUCKETS: ReadonlySet<LimiterBucket> = new Set([
+  "recover_ip",
+  "recover_user",
+  "exchange",
+  "delete_account",
+]);
+
+const FALLBACK_WINDOWS: Record<string, { max: number; windowMs: number }> = {
+  recover_ip: { max: 5, windowMs: 10 * 60_000 },
+  recover_user: { max: 10, windowMs: 60 * 60_000 },
+  exchange: { max: 30, windowMs: 10 * 60_000 },
+  delete_account: { max: 3, windowMs: 60 * 60_000 },
+};
+
+// Process-local fallback store: key -> sorted hit timestamps (epoch ms).
+const memoryFallback = new Map<string, number[]>();
+const MEMORY_FALLBACK_MAX_KEYS = 10_000;
+
+function checkMemoryFallback(
+  bucket: LimiterBucket,
+  identifier: string
+): RateLimitResult {
+  const cfg = FALLBACK_WINDOWS[bucket] ?? { max: 10, windowMs: 60_000 };
+  const key = `fallback:${bucket}:${identifier}`;
+  const now = Date.now();
+  const hits = (memoryFallback.get(key) ?? []).filter(
+    (t) => now - t < cfg.windowMs
+  );
+  if (hits.length >= cfg.max) {
+    return {
+      success: false,
+      limit: cfg.max,
+      remaining: 0,
+      reset: now + cfg.windowMs,
+    };
+  }
+  hits.push(now);
+  // Memory hygiene: bound the number of tracked identifiers.
+  if (memoryFallback.size >= MEMORY_FALLBACK_MAX_KEYS) {
+    const oldest = memoryFallback.keys().next();
+    if (!oldest.done) memoryFallback.delete(oldest.value);
+  }
+  memoryFallback.set(key, hits);
+  return {
+    success: true,
+    limit: cfg.max,
+    remaining: cfg.max - hits.length,
+    reset: now + cfg.windowMs,
+  };
+}
 
 /**
  * Checks a named rate limit bucket. Fails open on infrastructure errors.
@@ -309,7 +413,12 @@ export async function checkRateLimit(
     };
   } catch (error) {
     console.error(`[chithi] Rate limiter error on bucket "${bucket}":`, error);
-    // Fail open per §10.1
+    // Auth-sensitive buckets fail CLOSED via a process-local fallback so a
+    // Redis outage never opens the passcode brute-force window. All other
+    // buckets fail open per §10.1 (availability over strictness).
+    if (AUTH_SENSITIVE_BUCKETS.has(bucket)) {
+      return checkMemoryFallback(bucket, identifier);
+    }
     return {
       success: true,
       limit: 1000,

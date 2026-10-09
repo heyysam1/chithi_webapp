@@ -114,6 +114,13 @@ export const keys = {
     `abuse:count:${rateKey}`,
 
   /**
+   * Admin user-kind ban: abuse:block:user:{usernameLower}.
+   * Checked in requireMailboxOwner; written by POST /api/admin/ban.
+   */
+  abuseBlockUser: (usernameLower: string): string =>
+    `abuse:block:user:${usernameLower.toLowerCase()}`,
+
+  /**
    * Admin maintenance-mode flag: admin:maintenance ("1" = enabled)
    */
   adminMaintenance: (): string => "admin:maintenance",

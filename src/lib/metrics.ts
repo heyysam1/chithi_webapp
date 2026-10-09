@@ -153,15 +153,18 @@ export async function getUniqueVisitorSeries(
 ): Promise<MetricPoint[]> {
   const days = dateRangeDays(from, to);
   const redis = getRedis();
-  const counts = await Promise.all(
-    days.map(async (day) => {
-      try {
-        return await redis.pfcount(keys.uniqueVisitorsDay(day));
-      } catch {
-        return 0;
-      }
-    })
-  );
+  // Batch all per-day PFCOUNTs into a single pipeline round-trip instead
+  // of fanning out up to 400 concurrent requests.
+  const pipeline = redis.pipeline();
+  for (const day of days) {
+    pipeline.pfcount(keys.uniqueVisitorsDay(day));
+  }
+  let counts: number[];
+  try {
+    counts = await pipeline.exec<number[]>();
+  } catch {
+    return days.map((date) => ({ date, value: 0 }));
+  }
   return days.map((date, i) => ({
     date,
     value: Number(counts[i]) || 0,

@@ -25,6 +25,7 @@ export interface PipelineLike {
   zrevrange(key: string, min: number, max: number): PipelineLike;
   zremrangebyscore(key: string, min: number | string, max: number | string): PipelineLike;
   zcard(key: string): PipelineLike;
+  pfcount(...keys: string[]): PipelineLike;
   exec<T extends unknown[] = unknown[]>(): Promise<T>;
 }
 
@@ -188,7 +189,7 @@ export class InMemoryRedisShim implements RedisLike {
       val = parseInt(item.value, 10) || 0;
     }
     val -= 1;
-    if (val < 0) val = 0; // Clamped at 0 for unread counters
+    // Matches real Redis: negatives are allowed (no clamping).
     this.store.set(key, { value: val, expiresAt: item?.expiresAt ?? null });
     return val;
   }
@@ -505,6 +506,10 @@ export class InMemoryRedisShim implements RedisLike {
       },
       zcard: (key) => {
         queue.push(() => this.zcard(key));
+        return p;
+      },
+      pfcount: (...keys) => {
+        queue.push(() => this.pfcount(...keys));
         return p;
       },
       exec: async <T extends unknown[] = unknown[]>(): Promise<T> => {
