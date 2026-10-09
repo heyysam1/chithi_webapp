@@ -1,10 +1,10 @@
 import React from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
-import { WaxSeal } from "@/components/envelope/WaxSeal";
-import { Button } from "@/components/ui/Button";
 import { ScheduledNotice } from "./ScheduledNotice";
+import { SentHero, SentActions } from "./SentContent";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -26,6 +26,25 @@ export default async function LetterSentPage(props: {
   const { username } = await props.params;
   const { scheduled } = await props.searchParams;
 
+  // L-13: don't show a false confirmation on direct navigation. The composer
+  // always arrives here via same-origin navigation (referer present); a typed
+  // URL or external link has none (or a foreign host) — send those back to
+  // the write-letter page instead.
+  const headersList = await headers();
+  const referer = headersList.get("referer");
+  const host = headersList.get("host");
+  let cameFromSelf = false;
+  if (referer && host) {
+    try {
+      cameFromSelf = new URL(referer).host === host;
+    } catch {
+      cameFromSelf = false;
+    }
+  }
+  if (!cameFromSelf) {
+    redirect(`/${username}`);
+  }
+
   // The composer redirects here with ?scheduled=<epochMs> when the letter
   // was scheduled for future delivery.
   const scheduledTs = scheduled ? Number(scheduled) : NaN;
@@ -37,41 +56,10 @@ export default async function LetterSentPage(props: {
         {isScheduled ? (
           <ScheduledNotice scheduledFor={scheduledTs} />
         ) : (
-          <>
-            {/* Pressed wax seal illustration */}
-            <div className="flex justify-center mb-2 animate-scaleIn">
-              <WaxSeal size={64} isCracked={false} />
-            </div>
-
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-ink tracking-tight text-center">
-              Your letter is on its way
-            </h2>
-
-            <p className="text-sm text-ink-muted leading-relaxed max-w-sm mx-auto">
-              Your words have been sealed and delivered to{" "}
-              <span className="text-wax font-semibold">@{username}</span>&apos;s mailbox.
-              Because this is anonymous, the letter cannot be edited, recalled, or
-              tracked.
-            </p>
-          </>
+          <SentHero />
         )}
 
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link href={`/${username}`} className="w-full sm:w-auto">
-            <Button
-              variant="outline"
-              className="w-full text-ink border-edge hover:bg-canvas-subtle"
-            >
-              Write another letter
-            </Button>
-          </Link>
-
-          <Link href="/" className="w-full sm:w-auto">
-            <Button variant="primary" className="w-full">
-              Create your own mailbox
-            </Button>
-          </Link>
-        </div>
+        <SentActions username={username} />
       </div>
     </PageShell>
   );

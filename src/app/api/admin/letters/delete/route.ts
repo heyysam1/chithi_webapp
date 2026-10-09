@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiOk, apiErr, ApiError, parseJsonBody } from "@/lib/api";
-import { requireAdmin, AdminAuthError } from "@/lib/admin";
+import { requireAdmin, AdminAuthError, checkAdminActionRateLimit } from "@/lib/admin";
 import { getRedis } from "@/lib/redis";
 import { keys } from "@/lib/keys";
 import { deleteLetter } from "@/lib/letters";
@@ -39,6 +39,11 @@ function adminErrorMessage(code: string): string {
 export async function POST(req: NextRequest) {
   try {
     await requireAdmin(req);
+
+    // Bound high-speed abuse if the owner session is ever compromised.
+    if (!(await checkAdminActionRateLimit())) {
+      return apiErr("RATE_LIMITED", "Too many admin actions. Slow down.", 429);
+    }
 
     const input = await parseJsonBody(req, DeleteSchema);
 

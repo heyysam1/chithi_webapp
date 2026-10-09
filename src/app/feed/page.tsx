@@ -94,9 +94,11 @@ export default function FeedPage() {
             <h1 className="text-3xl sm:text-4xl font-serif font-bold text-ink">
               {t("feed.title")}
             </h1>
-            <span className="text-xl sm:text-2xl font-serif text-wax font-normal">
-              {t("feed.nativeTitle")}
-            </span>
+            {t("feed.title") !== t("feed.nativeTitle") && (
+              <span className="text-xl sm:text-2xl font-serif text-wax font-normal">
+                {t("feed.nativeTitle")}
+              </span>
+            )}
           </div>
 
           <p className="text-sm text-ink-muted max-w-xl leading-relaxed">

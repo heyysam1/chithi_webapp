@@ -10,16 +10,18 @@ import { FeaturesTab } from "@/components/admin/FeaturesTab";
 import { ReportsTab } from "@/components/admin/ReportsTab";
 import { UsersTab } from "@/components/admin/UsersTab";
 import { SystemTab } from "@/components/admin/SystemTab";
+import { useLocale } from "@/hooks/useLocale";
 
 type AuthState = "checking" | "authed" | "guest";
 
 function LoadingScreen() {
+  const { t } = useLocale();
   return (
     <div className="min-h-screen flex items-center justify-center bg-canvas transition-colors">
       <div
         className="w-10 h-10 rounded-full border-2 border-edge border-t-wax animate-spin"
         role="status"
-        aria-label="Loading"
+        aria-label={t("admin.page.title")}
       />
     </div>
   );

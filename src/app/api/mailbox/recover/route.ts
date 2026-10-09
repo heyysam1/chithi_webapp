@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { RecoverMailboxSchema } from "@/lib/schemas";
 import { recoverMailbox, recoverPermanentMailbox, isPermanentMailbox } from "@/lib/mailbox";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
+import { apiOk, apiErr, ApiError, getRateKey, isLocalRequest, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,16 +44,13 @@ export async function POST(req: NextRequest) {
       name: recovered.name,
       username: recovered.username,
       accessToken: recovered.accessToken,
-      // The recovery passcode is single-use and was rotated by recoverMailbox;
-      // the client must display the new passcode to the user. The permanent
-      // mailbox never rotates its passcode, so there is nothing new to show.
+      // The passcode is permanent and never rotated. It is echoed back so
+      // the client can persist it (e.g. after recovering on a fresh device).
       recoveryPasscode: recovered.recoveryPasscode,
-      passcodeRotated: !isPermanent,
     });
 
     // Update session cookie with rotated access token
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-    const isLocal = Boolean(host?.includes("localhost") || host?.includes("127.0.0.1"));
+    const isLocal = isLocalRequest(req);
     response.cookies.set({
       name: `chithi_s_${usernameLower}`,
       value: recovered.accessToken,

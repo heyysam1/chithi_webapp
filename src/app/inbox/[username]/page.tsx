@@ -23,7 +23,7 @@ import { readOneTimePasscode, clearOneTimePasscode } from "@/lib/passcodeStorage
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useToast } from "@/hooks/useToast";
 import { useLocale } from "@/hooks/useLocale";
-import { ShieldAlert, Copy, Bell } from "lucide-react";
+import { ShieldAlert, Copy, Bell, AlertCircle, RefreshCw } from "lucide-react";
 import { useLetterNotifications } from "@/hooks/useLetterNotifications";
 import { useSession } from "@/context/SessionContext";
 
@@ -80,6 +80,7 @@ export default function InboxPage(props: {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [isLoadError, setIsLoadError] = useState(false);
   const [isFaded, setIsFaded] = useState(false);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -126,6 +127,8 @@ export default function InboxPage(props: {
   const loadInbox = useCallback(async () => {
     if (!isTokenLoaded) return;
 
+    setIsLoadError(false);
+
     try {
       // 1. Prepare auth headers (check state, URL param, or localStorage)
       const keyParam = searchParams.get("key");
@@ -152,7 +155,13 @@ export default function InboxPage(props: {
           setIsLoading(false);
           return;
         }
-        setIsUnauthorized(true);
+        if (profileRes.status === 401 || profileRes.status === 403) {
+          setIsUnauthorized(true);
+        } else {
+          // M-08: server/network failure is not an auth failure — show the
+          // retry state instead of the misleading "Access Restricted" screen.
+          setIsLoadError(true);
+        }
         setIsLoading(false);
         return;
       }
@@ -174,6 +183,8 @@ export default function InboxPage(props: {
       if (!listJson.ok) {
         if (listRes.status === 401 || listRes.status === 403) {
           setIsUnauthorized(true);
+        } else {
+          setIsLoadError(true);
         }
         setIsLoading(false);
         return;
@@ -186,11 +197,12 @@ export default function InboxPage(props: {
       setIsUnauthorized(false);
     } catch (err) {
       console.error("[loadInbox error]", err);
-      setIsUnauthorized(true);
+      // M-08: network failure / offline — not an auth failure.
+      setIsLoadError(true);
     } finally {
       setIsLoading(false);
     }
-  }, [isTokenLoaded, usernameLower, token, searchParams]);
+  }, [isTokenLoaded, usernameLower, token, searchParams, t, showToast]);
 
   // 2. URL key exchange and token stripping per SEC-01
   useEffect(() => {
@@ -240,6 +252,8 @@ export default function InboxPage(props: {
       }
     } catch (err) {
       console.error("[handleLoadMore error]", err);
+      // L-21: surface the failure instead of silently stopping pagination.
+      showToast(t("errors.generic"), "error");
     } finally {
       setIsLoadingMore(false);
     }
@@ -372,11 +386,21 @@ export default function InboxPage(props: {
     const headers: Record<string, string> = {};
     if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
 
-    await fetch(`/api/letters/${letterId}?username=${encodeURIComponent(usernameLower)}`, {
-      method: "DELETE",
-      headers,
-    });
-    setLetters((prev) => prev.filter((l) => l.id !== letterId));
+    // M-07: verify the delete succeeded before removing from UI.
+    try {
+      const res = await fetch(`/api/letters/${letterId}?username=${encodeURIComponent(usernameLower)}`, {
+        method: "DELETE",
+        headers,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || (json && json.ok === false)) {
+        showToast(t(json?.error?.message || "errors.generic"), "error");
+        return;
+      }
+      setLetters((prev) => prev.filter((l) => l.id !== letterId));
+    } catch {
+      showToast(t("errors.generic"), "error");
+    }
   };
 
   const handlePublishLetter = async (letterId: string) => {
@@ -411,17 +435,28 @@ export default function InboxPage(props: {
     };
     if (storedToken) headers["Authorization"] = `Bearer ${storedToken}`;
 
-    await fetch(`/api/letters/${letterId}/react?username=${encodeURIComponent(usernameLower)}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ reaction }),
-    });
+    // L-22: only apply the reaction when the POST succeeds; surface failure.
+    try {
+      const res = await fetch(`/api/letters/${letterId}/react?username=${encodeURIComponent(usernameLower)}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ reaction }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || (json && json.ok === false)) {
+        showToast(t(json?.error?.message || "errors.generic"), "error");
+        return;
+      }
 
-    setLetters((prev) =>
-      prev.map((l) => (l.id === letterId ? { ...l, reaction } : l))
-    );
-    if (activeLetter && activeLetter.id === letterId) {
-      setActiveLetter({ ...activeLetter, reaction });
+      setLetters((prev) =>
+        prev.map((l) => (l.id === letterId ? { ...l, reaction } : l))
+      );
+      if (activeLetter && activeLetter.id === letterId) {
+        setActiveLetter({ ...activeLetter, reaction });
+      }
+    } catch (err) {
+      console.error("[handleReactToLetter error]", err);
+      showToast(t("errors.generic"), "error");
     }
   };
 
@@ -492,6 +527,39 @@ export default function InboxPage(props: {
                 Home
               </Button>
             </Link>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
+
+  // Load error state (M-08) — network/API failure with retry, distinct from
+  // the unauthorized screen.
+  if (isLoadError) {
+    return (
+      <PageShell>
+        <div className="max-w-md mx-auto py-16 text-center space-y-5 border border-edge rounded-3xl bg-surface p-8 shadow-xl transition-colors">
+          <div className="w-12 h-12 rounded-2xl bg-danger/10 border border-danger/20 flex items-center justify-center text-wax mx-auto">
+            <AlertCircle size={24} strokeWidth={1.5} />
+          </div>
+          <h1 className="text-xl font-serif font-bold text-ink">
+            {t("errors.generic")}
+          </h1>
+          <p className="text-sm text-ink-muted leading-relaxed">
+            {t("errors.internal")}
+          </p>
+          <div className="pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLoading(true);
+                loadInbox();
+              }}
+              className="rounded-full gap-1.5 border-edge"
+            >
+              <RefreshCw size={14} />
+              <span>{t("profile.retry")}</span>
+            </Button>
           </div>
         </div>
       </PageShell>

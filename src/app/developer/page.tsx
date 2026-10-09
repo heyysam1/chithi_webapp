@@ -32,7 +32,7 @@ export default function DeveloperPage() {
           <p className="text-lg font-serif font-semibold text-ink">
             Mohammed Sami
           </p>
-          <p className="text-sm font-serif italic text-wax">
+          <p className="text-sm font-serif italic text-wax-dim">
             {t("developer.tagline")}
           </p>
         </div>

@@ -2,8 +2,7 @@ import { NextRequest } from "next/server";
 import { CreateMailboxSchema } from "@/lib/schemas";
 import { createMailbox, isPermanentMailbox } from "@/lib/mailbox";
 import { checkRateLimit } from "@/lib/ratelimit";
-import { apiOk, apiErr, ApiError, getRateKey, parseJsonBody, rateLimitHeaders } from "@/lib/api";
-import { env } from "@/lib/env";
+import { apiOk, apiErr, ApiError, getRateKey, getRequestBaseUrl, isLocalRequest, parseJsonBody, rateLimitHeaders } from "@/lib/api";
 import { DURATIONS } from "@/lib/constants";
 import { incrMetric } from "@/lib/metrics";
 
@@ -33,9 +32,13 @@ export async function POST(req: NextRequest) {
     // Aggregate metric for the admin dashboard (fire-and-forget).
     void incrMetric("mailboxes_created");
 
-    const proto = req.headers.get("x-forwarded-proto") || "https";
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-    const baseUrl = host ? `${proto}://${host}` : env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+    const baseUrl = getRequestBaseUrl(req);
+    // SECURITY TRADEOFF (documented, not fixed): the private inbox link
+    // carries the raw access token as ?key=. It leaks via browser history,
+    // shoulder-surfing, and screenshots. Mitigations in place:
+    // Referrer-Policy: no-referrer on mailbox pages, and the token is
+    // rotated on logout/recovery. A single-use exchange flow would be
+    // stronger but is out of scope for this change.
     const inboxUrl = `${baseUrl}/inbox/${created.username}?key=${encodeURIComponent(created.accessToken)}`;
     const publicUrl = `${baseUrl}/${created.username}`;
 
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Set authentication session cookie (§8.2)
-    const isLocal = Boolean(host?.includes("localhost") || host?.includes("127.0.0.1"));
+    const isLocal = isLocalRequest(req);
     response.cookies.set({
       name: `chithi_s_${usernameLower}`,
       value: created.accessToken,

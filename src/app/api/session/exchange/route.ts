@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getRedis } from "@/lib/redis";
 import { keys } from "@/lib/keys";
 import { hashWithPepper, timingSafeEqual } from "@/lib/crypto";
-import { apiOk, apiErr, ApiError, parseJsonBody, getRateKey, rateLimitHeaders } from "@/lib/api";
+import { apiOk, apiErr, ApiError, parseJsonBody, getRateKey, isLocalRequest, rateLimitHeaders } from "@/lib/api";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { MailboxRecord } from "@/lib/types";
 import { touchMailboxLogin } from "@/lib/mailbox";
@@ -64,8 +64,7 @@ export async function POST(req: NextRequest) {
     const remainingSeconds = Math.max(1, Math.floor((mailbox.expiresAt - Date.now()) / 1000));
     const maxAge = Math.min(remainingSeconds, 7 * 24 * 3600);
 
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-    const isLocal = Boolean(host?.includes("localhost") || host?.includes("127.0.0.1"));
+    const isLocal = isLocalRequest(req);
     const response = apiOk({ exchanged: true });
     response.cookies.set({
       name: `chithi_s_${usernameLower}`,

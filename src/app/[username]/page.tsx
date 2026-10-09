@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPublicMailbox } from "@/lib/mailbox";
 import { PageShell } from "@/components/layout/PageShell";
 import { LetterComposer } from "@/components/letter/LetterComposer";
+import { WriteLetterHeading } from "./WriteLetterHeading";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +50,7 @@ export default async function PublicWriteLetterPage(props: {
         {/* Recipient Header Banner */}
         <div className="border-b border-edge pb-6 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink">
-              Writing to <span className="text-wax">@{mailboxMeta.username}</span>
-            </h1>
+            <WriteLetterHeading username={mailboxMeta.username} />
           </div>
         </div>
 

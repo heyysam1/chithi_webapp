@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiOk, apiErr, ApiError, parseJsonBody } from "@/lib/api";
-import { requireAdmin, AdminAuthError } from "@/lib/admin";
+import { requireAdmin, AdminAuthError, checkAdminActionRateLimit } from "@/lib/admin";
 import { getRedis } from "@/lib/redis";
 import { keys } from "@/lib/keys";
 import { EXTEND_DURATIONS } from "@/lib/constants";
@@ -53,6 +53,11 @@ export async function POST(
 ) {
   try {
     await requireAdmin(req);
+
+    // Bound high-speed abuse if the owner session is ever compromised.
+    if (!(await checkAdminActionRateLimit())) {
+      return apiErr("RATE_LIMITED", "Too many admin actions. Slow down.", 429);
+    }
 
     const { username } = await params;
     const usernameLower = (username || "").trim().toLowerCase();

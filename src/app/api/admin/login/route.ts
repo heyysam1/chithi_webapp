@@ -5,6 +5,7 @@ import {
   apiErr,
   ApiError,
   getRateKey,
+  isLocalRequest,
   parseJsonBody,
   rateLimitHeaders,
 } from "@/lib/api";
@@ -96,11 +97,7 @@ export async function POST(req: NextRequest) {
     const response = apiOk({ username: recovered.username });
 
     // Identical session cookie format as every other login in the app.
-    const host =
-      req.headers.get("x-forwarded-host") || req.headers.get("host");
-    const isLocal = Boolean(
-      host?.includes("localhost") || host?.includes("127.0.0.1")
-    );
+    const isLocal = isLocalRequest(req);
     response.cookies.set({
       name: `chithi_s_${usernameLower}`,
       value: recovered.accessToken,

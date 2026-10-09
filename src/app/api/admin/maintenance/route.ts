@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiOk, apiErr, ApiError, parseJsonBody } from "@/lib/api";
-import { requireAdmin, AdminAuthError } from "@/lib/admin";
+import { requireAdmin, AdminAuthError, checkAdminActionRateLimit } from "@/lib/admin";
 import { getRedis } from "@/lib/redis";
 import { keys } from "@/lib/keys";
 
@@ -30,8 +30,8 @@ function adminErrorMessage(code: string): string {
  * POST /api/admin/maintenance { enabled: boolean } -> { enabled }
  *
  * Stores the maintenance-mode flag at admin:maintenance ("1"/"0").
- * NOTE: enforcement (middleware returning 503 while enabled) is a separate
- * future step — this endpoint only manages the flag.
+ * Enforcement lives in src/middleware.ts: while enabled, every page and API
+ * route except the admin surface (/admin, /api/admin/*) returns 503.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -54,6 +54,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireAdmin(req);
+
+    // Bound high-speed abuse if the owner session is ever compromised.
+    if (!(await checkAdminActionRateLimit())) {
+      return apiErr("RATE_LIMITED", "Too many admin actions. Slow down.", 429);
+    }
+
     const input = await parseJsonBody(req, MaintenanceSchema);
     const redis = getRedis();
     await redis.set(keys.adminMaintenance(), input.enabled ? "1" : "0");
