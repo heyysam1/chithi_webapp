@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 export interface ToggleProps {
   checked: boolean;
@@ -15,7 +15,8 @@ export function Toggle({
   disabled = false,
   id,
 }: ToggleProps) {
-  const toggleId = id || `toggle_${Math.random().toString(36).slice(2, 7)}`;
+  const reactId = useId();
+  const toggleId = id ?? `toggle-${reactId}`;
 
   return (
     <label
@@ -33,10 +34,10 @@ export function Toggle({
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="sr-only"
+          className="peer sr-only"
         />
         <div
-          className={`w-11 h-6 rounded-full transition-colors duration-200 border ${
+          className={`w-11 h-6 rounded-full transition-colors duration-200 border peer-focus-visible:ring-2 peer-focus-visible:ring-wax peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-canvas ${
             checked
               ? "bg-wax border-wax"
               : "bg-edge-subtle border-edge-subtle"

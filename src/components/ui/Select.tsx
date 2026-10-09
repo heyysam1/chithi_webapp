@@ -10,9 +10,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       <div className="relative w-full">
         <select
           ref={ref}
-          className={`w-full min-h-[44px] px-4 py-2.5 pr-9 text-sm bg-surface-raised text-ink rounded-xl border appearance-none transition-colors duration-150 focus:outline-none focus:border-wax focus:ring-1 focus:ring-wax shadow-sm [&>option]:bg-surface [&>option]:text-ink dark:[&>option]:bg-surface-raised dark:[&>option]:text-ink [color-scheme:light_dark] cursor-pointer ${
+          aria-invalid={error || undefined}
+          className={`w-full min-h-[44px] px-4 py-2.5 pr-9 text-base bg-surface-raised text-ink rounded-xl border appearance-none transition-colors duration-150 focus:outline-none focus:border-wax focus:ring-1 focus:ring-wax shadow-sm disabled:opacity-50 disabled:cursor-not-allowed [&>option]:bg-surface [&>option]:text-ink dark:[&>option]:bg-surface-raised dark:[&>option]:text-ink [color-scheme:light_dark] cursor-pointer ${
             error
-              ? "border-danger text-danger focus:border-danger"
+              ? "border-danger focus:border-danger"
               : "border-edge hover:border-wax"
           } ${className}`}
           {...props}

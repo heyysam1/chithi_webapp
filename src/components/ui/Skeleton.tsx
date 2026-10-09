@@ -10,6 +10,7 @@ export function Skeleton({
   return (
     <div
       style={style}
+      aria-hidden="true"
       className={`animate-pulse bg-edge/80 rounded-xl ${className}`}
     />
   );
