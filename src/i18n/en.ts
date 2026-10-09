@@ -451,6 +451,8 @@ export const en = {
       desc: "For zero-knowledge privacy, your 6-digit recovery passcode was displayed only once when sealing your mailbox and is stored on our server as a one-way salted cryptographic hash.",
       tip: "If you need to log in from another device, use the passcode you wrote down during creation. If you lost it, you can keep using this active session until the mailbox naturally expires.",
       close: "Understood",
+      passcodeLabel: "Your 6-digit passcode",
+      tapToCopy: "Tap to copy",
     },
     extend: {
       title: "Extend Mailbox Expiry",
