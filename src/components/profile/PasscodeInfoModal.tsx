@@ -1,18 +1,46 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/hooks/useLocale";
-import { Lock, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
+import { Lock, Sparkles, Copy } from "lucide-react";
 
 export interface PasscodeInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
+  username: string;
 }
 
-export function PasscodeInfoModal({ isOpen, onClose }: PasscodeInfoModalProps) {
+export function PasscodeInfoModal({ isOpen, onClose, username }: PasscodeInfoModalProps) {
   const { t } = useLocale();
+  const { showToast } = useToast();
+  const [passcode, setPasscode] = useState<string | null>(null);
+
+  // The passcode lives only in this browser's session storage (the server
+  // keeps just a one-way hash). Read it when the modal opens.
+  useEffect(() => {
+    if (isOpen && username) {
+      try {
+        setPasscode(
+          sessionStorage.getItem(`chithi:passcode:${username.toLowerCase()}`)
+        );
+      } catch {
+        setPasscode(null);
+      }
+    }
+  }, [isOpen, username]);
+
+  const handleCopy = async () => {
+    if (!passcode) return;
+    try {
+      await navigator.clipboard.writeText(passcode);
+      showToast(t("keyCard.copied"), "success");
+    } catch {
+      showToast(t("errors.generic"), "error");
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
@@ -36,15 +64,34 @@ export function PasscodeInfoModal({ isOpen, onClose }: PasscodeInfoModalProps) {
         <div className="space-y-3 text-xs sm:text-sm text-ink-muted leading-relaxed">
           <p>{t("profile.passcodeModal.desc")}</p>
 
-          <div className="p-3.5 rounded-2xl bg-surface border border-edge space-y-1.5 text-xs text-ink">
-            <div className="flex items-center gap-1.5 font-medium text-wax">
-              <Sparkles size={14} />
-              <span>Tip</span>
+          {passcode ? (
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="w-full p-4 rounded-2xl bg-surface border border-edge space-y-1 text-center cursor-pointer hover:border-wax transition-colors"
+            >
+              <div className="text-[11px] font-mono uppercase tracking-wider text-ink-muted">
+                {t("profile.passcodeModal.passcodeLabel")}
+              </div>
+              <div className="font-mono text-3xl font-bold tracking-[0.35em] text-ink pl-[0.35em]">
+                {passcode}
+              </div>
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-ink-muted">
+                <Copy size={12} />
+                <span>{t("profile.passcodeModal.tapToCopy")}</span>
+              </div>
+            </button>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-surface border border-edge space-y-1.5 text-xs text-ink">
+              <div className="flex items-center gap-1.5 font-medium text-wax">
+                <Sparkles size={14} />
+                <span>Tip</span>
+              </div>
+              <p className="text-ink-muted leading-relaxed">
+                {t("profile.passcodeModal.tip")}
+              </p>
             </div>
-            <p className="text-ink-muted leading-relaxed">
-              {t("profile.passcodeModal.tip")}
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Action button */}

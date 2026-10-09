@@ -446,6 +446,7 @@ export default function ProfilePage() {
       <PasscodeInfoModal
         isOpen={isPasscodeModalOpen}
         onClose={() => setIsPasscodeModalOpen(false)}
+        username={profileData?.username || activeUsername || ""}
       />
 
       {/* Disconnect Confirmation Modal */}

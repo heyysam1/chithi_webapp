@@ -114,9 +114,7 @@ export function ExtendExpiryCard({
 
   return (
     <>
-      <div className="relative p-6 sm:p-7 rounded-3xl bg-surface border border-edge shadow-xl space-y-4 overflow-hidden transition-colors">
-        <div className="absolute -top-2 left-10 w-24 h-5 washi-tape-sage rounded-sm pointer-events-none" />
-
+      <div className="p-5 rounded-3xl bg-surface border border-edge shadow-sm space-y-4 transition-colors">
         <div className="space-y-1">
           <h3 className="text-base font-serif font-bold text-ink flex items-center gap-2">
             <Hourglass size={16} strokeWidth={1.5} className="text-wax" />
@@ -157,13 +155,13 @@ export function ExtendExpiryCard({
 
         <Button
           type="button"
-          variant="primary"
+          variant="secondary"
           size="md"
           onClick={() => {
             setErrorMsg(null);
             setConfirmOpen(true);
           }}
-          className="w-full rounded-full gap-2 font-semibold"
+          className="w-full rounded-full gap-2 font-medium border-edge"
         >
           <Hourglass size={16} strokeWidth={1.5} />
           <span>{t("profile.extend.extendBtn")}</span>
