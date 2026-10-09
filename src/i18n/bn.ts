@@ -306,6 +306,7 @@ export const bn: Dict = {
   about: {
     title: "চিঠি সম্পর্কে",
     tagline: "কোলাহলের ভিড়ে নীরব ভাবনা।",
+    developerLink: "ডেভেলপার সম্পর্কে",
     chapters: {
       philosophy: "দর্শন",
       privacy: "গোপনীয়তাই নকশা",
