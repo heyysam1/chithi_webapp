@@ -71,9 +71,9 @@ export function InboxToolbar({
       {/* Actions: Export, Bottle Toggle and Keys Modal Button.
           Vertical stack on mobile (cleaner formation), horizontal row on sm+. */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center items-start gap-2.5 sm:gap-3 w-full sm:w-auto min-w-0">
-        <InboxExportButton username={username} mailboxName={username} />
-
         <BottleToggle username={username} initialValue={acceptsBottles} />
+
+        <InboxExportButton username={username} mailboxName={username} />
 
         <Button
           variant="secondary"
