@@ -5,10 +5,12 @@ import Link from "next/link";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/hooks/useLocale";
+import { useSession } from "@/hooks/useSession";
 import { DEVELOPER_PHOTO_SRC } from "@/lib/developerPhoto";
 
 export default function AboutPage() {
   const { t } = useLocale();
+  const { activeUsername } = useSession();
 
   return (
     <PageShell>
@@ -61,13 +63,16 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Action Call to Action */}
+        {/* Action Call to Action. The create button only makes sense for
+            visitors without a mailbox; signed-in users never see it. */}
         <div className="pt-8 border-t border-edge flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link href="/" className="w-full sm:w-auto">
-            <Button variant="primary" size="lg" className="w-full">
-              {t("about.cta.create")}
-            </Button>
-          </Link>
+          {!activeUsername && (
+            <Link href="/" className="w-full sm:w-auto">
+              <Button variant="primary" size="lg" className="w-full">
+                {t("about.cta.create")}
+              </Button>
+            </Link>
+          )}
           <Link href="/feed" className="w-full sm:w-auto">
             <Button variant="outline" size="lg" className="w-full">
               {t("about.cta.explore")}
