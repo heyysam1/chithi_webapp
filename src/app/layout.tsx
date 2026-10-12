@@ -28,10 +28,7 @@ const siteDescription =
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: {
-    default: siteTitle,
-    template: "%s · MyChithi",
-  },
+  title: siteTitle,
   description: siteDescription,
   keywords: [
     "anonymous letters",

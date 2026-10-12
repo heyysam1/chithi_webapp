@@ -182,6 +182,27 @@ body {
   box-shadow: 0 12px 36px -8px rgba(32, 39, 48, 0.4), 0 1px 0 rgba(226, 232, 240, 0.15) inset;
 }
 
+/* Illustrated papers: full-page artwork with a blank centre. Cover keeps
+   the writing band over the artwork's empty middle at any aspect ratio;
+   PaperSurface adds extra vertical padding for these two. */
+.paper-starry {
+  background-color: #f3eddc;
+  background-image: url("/paper-art/starry.webp");
+  background-size: cover;
+  background-position: center;
+  color: #2e2a55;
+  box-shadow: 0 12px 32px -10px rgba(46, 42, 85, 0.3);
+}
+
+.paper-blossom {
+  background-color: #fbf1ec;
+  background-image: url("/paper-art/blossom.webp");
+  background-size: cover;
+  background-position: center;
+  color: #5b2333;
+  box-shadow: 0 12px 30px -10px rgba(91, 35, 51, 0.2);
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

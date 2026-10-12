@@ -594,7 +594,7 @@ export default function InboxPage(props: {
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-edge pb-4">
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-ink">
-            <span className="text-wax">@{username}</span>
+            <span className="font-username font-normal text-wax">@{username}</span>
             {t("inbox.title")}
           </h1>
         </div>
@@ -778,7 +778,11 @@ export default function InboxPage(props: {
       />
 
       {/* Off-screen Postcard Canvas for 1080x1920 exports (§14) */}
-      <PostcardCanvas letter={postcardLetter} canvasRef={postcardCanvasRef} />
+      <PostcardCanvas
+        letter={postcardLetter}
+        canvasRef={postcardCanvasRef}
+        footerLabel={`@${username}`}
+      />
     </PageShell>
   );
 }

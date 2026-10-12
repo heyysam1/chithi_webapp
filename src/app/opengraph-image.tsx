@@ -2,6 +2,8 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { THEME_COLORS } from "@/lib/theme";
+import { FRAUNCES_700_BASE64 } from "@/lib/artwork/fraunces700";
+import { FRAUNCES_ITALIC_500_BASE64 } from "@/lib/artwork/frauncesItalic500";
 
 export const runtime = "nodejs";
 export const alt = "MyChithi - Anonymous Private Letters";
@@ -21,6 +23,10 @@ const PEACH = THEME_COLORS.wax.light;
 export default async function Image() {
   const logoBuffer = await readFile(join(process.cwd(), "public/logo.png"));
   const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+  // Brand font (Fraunces) so the share card matches the site identity.
+  // The font files are embedded as base64 data modules.
+  const frauncesBold = Buffer.from(FRAUNCES_700_BASE64, "base64");
+  const frauncesItalic = Buffer.from(FRAUNCES_ITALIC_500_BASE64, "base64");
 
   return new ImageResponse(
     (
@@ -62,7 +68,7 @@ export default async function Image() {
         <div
           style={{
             fontSize: 92,
-            fontFamily: "serif",
+            fontFamily: "Fraunces",
             fontWeight: 700,
             color: INK,
             letterSpacing: "-0.02em",
@@ -80,7 +86,8 @@ export default async function Image() {
             textAlign: "center",
             maxWidth: 760,
             lineHeight: 1.45,
-            fontFamily: "serif",
+            fontFamily: "Fraunces",
+            fontWeight: 500,
             fontStyle: "italic",
           }}
         >
@@ -113,6 +120,8 @@ export default async function Image() {
               color: CREAM,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
+              fontFamily: "sans-serif",
+              fontWeight: 700,
             }}
           >
             No signup · No tracking
@@ -122,6 +131,10 @@ export default async function Image() {
     ),
     {
       ...size,
+      fonts: [
+        { name: "Fraunces", data: frauncesBold, weight: 700, style: "normal" },
+        { name: "Fraunces", data: frauncesItalic, weight: 500, style: "italic" },
+      ],
     }
   );
 }

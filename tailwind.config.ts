@@ -80,6 +80,7 @@ const config: Config = {
         display: ["var(--font-display)", '"Hind Siliguri"', '"Noto Serif Bengali"', "serif"],
         ui: ["var(--font-ui)", '"Hind Siliguri"', '"Noto Serif Bengali"', "sans-serif"],
         hand: ["var(--font-hand)", '"Hind Siliguri"', '"Noto Serif Bengali"', "cursive", "sans-serif"],
+        username: ["var(--font-username)", '"Hind Siliguri"', '"Noto Serif Bengali"', "cursive"],
         calligraphy: ["var(--font-calligraphy)", '"Hind Siliguri"', '"Noto Serif Bengali"', "cursive", "sans-serif"],
         pencil: ["var(--font-pencil)", '"Hind Siliguri"', '"Noto Serif Bengali"', "cursive", "sans-serif"],
         typewriter: ["var(--font-typewriter)", '"Hind Siliguri"', '"Noto Serif Bengali"', "monospace"],

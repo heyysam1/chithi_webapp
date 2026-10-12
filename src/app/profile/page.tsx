@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
@@ -8,6 +8,8 @@ import { ProfileHeaderCard } from "@/components/profile/ProfileHeaderCard";
 import { ProfileStatsGrid } from "@/components/profile/ProfileStatsGrid";
 import { PasscodeInfoModal } from "@/components/profile/PasscodeInfoModal";
 import { CopyField } from "@/components/ui/CopyField";
+import { StoryCanvas } from "@/components/postcard/StoryCanvas";
+import { useDownloadStory } from "@/components/postcard/useDownloadStory";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useLocale } from "@/hooks/useLocale";
@@ -24,6 +26,7 @@ import {
   AlertCircle,
   Bell,
   Trash2,
+  ImageDown,
 } from "lucide-react";
 import { useLetterNotifications } from "@/hooks/useLetterNotifications";
 import { useSession } from "@/hooks/useSession";
@@ -210,6 +213,26 @@ export default function ProfilePage() {
       ? `${process.env.NEXT_PUBLIC_APP_URL || ""}/${profileData.username}`
       : "";
 
+  // Story share image: the off-screen canvas mounts only while an export
+  // is requested; the effect fires after mount so the canvas ref is ready.
+  const storyCanvasRef = useRef<HTMLDivElement>(null);
+  const { download: downloadStory, isExporting: isStoryExporting } =
+    useDownloadStory(storyCanvasRef);
+  const [storyRequested, setStoryRequested] = useState(false);
+  useEffect(() => {
+    if (!storyRequested || !profileData) return;
+    let cancelled = false;
+    (async () => {
+      await downloadStory(profileData.username);
+      if (!cancelled) setStoryRequested(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storyRequested]);
+  const storyDisplayUrl = publicUrl.replace(/^https?:\/\//, "");
+
   return (
     <PageShell>
       <div className="max-w-4xl mx-auto space-y-8 py-6 sm:py-10 pb-36 sm:pb-44">
@@ -368,7 +391,7 @@ export default function ProfilePage() {
                         key={s.username}
                         type="button"
                         onClick={() => setActiveUsername(s.username)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-full text-[13px] font-username transition-all cursor-pointer ${
                           isActive
                             ? "bg-wax text-white shadow-sm font-semibold"
                             : "bg-edge/40 text-ink-muted hover:bg-edge"
@@ -465,6 +488,31 @@ token: token,
               </div>
 
               <CopyField value={publicUrl} />
+
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  onClick={() => setStoryRequested(true)}
+                  disabled={isStoryExporting}
+                  className="rounded-full border-edge hover:bg-canvas text-ink gap-2 text-xs sm:text-sm font-medium cursor-pointer"
+                >
+                  <ImageDown size={16} className="text-wax" />
+                  <span>{t("profile.publicUrl.storyButton")}</span>
+                </Button>
+                <p className="text-[11px] text-ink-muted mt-2">
+                  {t("profile.publicUrl.storyHint")}
+                </p>
+              </div>
+
+              {storyRequested && profileData && (
+                <StoryCanvas
+                  username={profileData.username}
+                  displayUrl={storyDisplayUrl}
+                  canvasRef={storyCanvasRef}
+                />
+              )}
             </div>
 
             {/* 4b. Mailbox Expiry Extension lives inside the header countdown
