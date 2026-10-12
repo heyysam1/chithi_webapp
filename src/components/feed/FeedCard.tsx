@@ -140,14 +140,14 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
         </div>
       </div>
 
-      {/* Full Modal View on click per §13 */}
+      {/* Full Modal View on click per §13. The full letter view carries
+          no stamp: stamps belong to cards and private letters, not to
+          the public reading page (nor to its download, see below). */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <div className="space-y-4">
           <PaperSurface
             paper={item.paper}
-            stamp={item.stamp}
             font={item.font}
-            stampSeed={item.id}
             variant="reader"
           >
             <div className="whitespace-pre-wrap break-words min-h-[220px]">
@@ -202,6 +202,7 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
           letter={item}
           canvasRef={canvasRef}
           footerLabel="Benami Kham"
+          hideStamp
         />
       )}
     </>

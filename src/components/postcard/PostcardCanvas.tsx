@@ -22,9 +22,12 @@ export interface PostcardCanvasProps {
   /** Left footer label on the postcard ("@username" for inbox letters,
    * "Benami Kham" for feed letters). */
   footerLabel?: string;
+  /** Feed postcards render without the sender's stamp: the public
+   * letter page and its download carry no stamp. */
+  hideStamp?: boolean;
 }
 
-export function PostcardCanvas({ letter, font, canvasRef, footerLabel }: PostcardCanvasProps) {
+export function PostcardCanvas({ letter, font, canvasRef, footerLabel, hideStamp }: PostcardCanvasProps) {
   const textRef = useRef<HTMLDivElement>(null);
   const [fontSize, setFontSize] = useState(28);
 
@@ -76,7 +79,7 @@ export function PostcardCanvas({ letter, font, canvasRef, footerLabel }: Postcar
       >
         <PaperSurface
           paper={letter.paper}
-          stamp={letter.stamp}
+          stamp={hideStamp ? undefined : letter.stamp}
           font={font || letter.font}
           stampSeed={letter.id}
           variant="postcard"
