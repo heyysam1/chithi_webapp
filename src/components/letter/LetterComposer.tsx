@@ -20,6 +20,8 @@ import { useLocale } from "@/hooks/useLocale";
 import { useSession } from "@/hooks/useSession";
 import { useLetterDraft } from "@/hooks/useLetterDraft";
 import { DraftBanner } from "./DraftBanner";
+import { SentSuccessOverlay, SentSuccessInfo } from "./SentSuccessOverlay";
+import { AnimatePresence } from "framer-motion";
 import { User, EyeOff, Mailbox, Clock, X } from "lucide-react";
 
 export interface LetterComposerProps {
@@ -61,6 +63,29 @@ export function LetterComposer({
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [senderName, setSenderName] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // Set on a successful send: shows the animated confirmation overlay
+  // instead of navigating away (which felt like a silent page refresh).
+  const [sentInfo, setSentInfo] = useState<SentSuccessInfo | null>(null);
+
+  const resetComposer = () => {
+    setBody("");
+    setHints([""]);
+    setAdvancedState({
+      lockKind: "none",
+      unlockAt: Date.now() + 3600_000,
+      riddleQuestion: "",
+      riddleAnswer: "",
+      burnAfterReading: false,
+    });
+    setScheduleEnabled(false);
+    setScheduledFor(null);
+  };
+
+  const handleWriteAnother = () => {
+    resetComposer();
+    setSentInfo(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const [isSelfSending, setIsSelfSending] = useState(false);
 
   // Scheduled delivery (direct letters only)
@@ -221,7 +246,8 @@ export function LetterComposer({
         }
 
         clearDraft();
-        router.push("/bottle?sent=true");
+        setIsSending(false);
+        setSentInfo({ kind: "bottle" });
       } else {
         let modePayload:
           | { kind: "none" }
@@ -275,11 +301,11 @@ export function LetterComposer({
         }
 
         clearDraft();
-        router.push(
-          `/${recipientUsername}/sent${
-            scheduledTs ? `?scheduled=${scheduledTs}` : ""
-          }`
-        );
+        setIsSending(false);
+        setSentInfo({
+          kind: replyToId ? "reply" : "direct",
+          scheduledFor: scheduledTs,
+        });
       }
     } catch {
       showToast(t("errors.generic"), "error");
@@ -469,6 +495,7 @@ export function LetterComposer({
   ) : null;
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-40 overflow-x-hidden">
       {/* Reply indicator — shown when composing a reply to an existing letter */}
       {replyToId && !isBottleMode && recipientUsername && (
@@ -654,5 +681,23 @@ export function LetterComposer({
         </div>
       </div>
     </form>
+
+    {/* Outside the form on purpose: the shared Button has no default
+        type, so inside the form these would submit it again. */}
+    <AnimatePresence>
+      {sentInfo && (
+        <SentSuccessOverlay
+          info={sentInfo}
+          onWriteAnother={handleWriteAnother}
+          onHome={() => router.push("/")}
+          onBackToInbox={
+            recipientUsername
+              ? () => router.push(`/inbox/${recipientUsername}`)
+              : undefined
+          }
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
