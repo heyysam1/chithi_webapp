@@ -201,6 +201,14 @@ export interface PaperDefinition {
 }
 
 export const PAPERS: Record<PaperStyleId, PaperDefinition> = {
+  typewriter: {
+    id: "typewriter",
+    labelKey: "papers.typewriter",
+    defaultFont: "bnTypewriter",
+    inkColor: PAPER_COLORS.typewriter.ink,
+    baseColor: PAPER_COLORS.typewriter.base,
+    previewSwatch: "bg-surface border-edge",
+  },
   parchment: {
     id: "parchment",
     labelKey: "papers.parchment",
@@ -224,14 +232,6 @@ export const PAPERS: Record<PaperStyleId, PaperDefinition> = {
     inkColor: PAPER_COLORS.rose.ink,
     baseColor: PAPER_COLORS.rose.base,
     previewSwatch: "bg-lavender-surface border-lavender-edge",
-  },
-  typewriter: {
-    id: "typewriter",
-    labelKey: "papers.typewriter",
-    defaultFont: "bnTypewriter",
-    inkColor: PAPER_COLORS.typewriter.ink,
-    baseColor: PAPER_COLORS.typewriter.base,
-    previewSwatch: "bg-surface border-edge",
   },
   rainy: {
     id: "rainy",

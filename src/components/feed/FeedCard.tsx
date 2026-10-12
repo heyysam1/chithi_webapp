@@ -92,12 +92,9 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
             variant="thumb"
             className="pb-8"
           >
-            <div className="line-clamp-[10] whitespace-pre-wrap break-words">
+            <div className="line-clamp-[10] whitespace-pre-wrap break-words [mask-image:linear-gradient(to_bottom,black_80%,transparent_99%)]">
               {item.body}
             </div>
-
-            {/* Soft bottom fade mask (§13) */}
-            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 to-transparent pointer-events-none" />
           </PaperSurface>
         </div>
 

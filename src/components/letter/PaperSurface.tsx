@@ -54,14 +54,31 @@ export function PaperSurface({
       ? { paddingTop: "15%", paddingBottom: "26%" }
       : isIllustrated && variant === "postcard"
         ? { paddingTop: "16%", paddingBottom: "22%" }
-        : {};
+        : isIllustrated && variant === "thumb"
+          ? { paddingTop: "13%", paddingBottom: "10%" }
+          : {};
+  // Thumbs letterbox the artwork (see artThumbFit), so the blank centre
+  // is narrower there and the text band needs deeper side insets.
   const artInlineInset = isIllustrated
-    ? {
-        paddingLeft: "11%",
-        // Keep clearing the corner stamp as well as the side artwork.
-        paddingRight: stamp ? "max(11%, 5rem)" : "11%",
-      }
+    ? variant === "thumb"
+      ? {
+          paddingLeft: "26%",
+          paddingRight: stamp ? "max(26%, 5rem)" : "26%",
+        }
+      : {
+          paddingLeft: "11%",
+          // Keep clearing the corner stamp as well as the side artwork.
+          paddingRight: stamp ? "max(11%, 5rem)" : "11%",
+        }
     : {};
+  // Feed thumbnails are landscape while the artwork is portrait, so
+  // "cover" crops the artwork's top and bottom edges away. Thumbs use
+  // "contain" instead: the whole artwork stays visible, letterboxed by
+  // the paper's own base color.
+  const artThumbFit =
+    isIllustrated && variant === "thumb"
+      ? { backgroundSize: "contain", backgroundRepeat: "no-repeat" }
+      : {};
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -78,7 +95,7 @@ export function PaperSurface({
     composer: "p-8 sm:p-12 min-h-[460px] rounded-3xl",
     reader: "p-8 sm:p-12 min-h-[420px] rounded-3xl",
     postcard: "p-12 w-[540px] h-[960px] flex flex-col justify-between rounded-none",
-    thumb: "p-5 min-h-[220px] max-h-[320px] overflow-hidden rounded-2xl text-sm",
+    thumb: "p-5 min-h-[220px] max-h-[320px] sm:h-[340px] sm:max-h-[340px] overflow-hidden rounded-2xl text-sm",
   };
 
   // Font family resolution: custom chosen font with fallback to Bengali typography
@@ -93,6 +110,7 @@ export function PaperSurface({
       style={{
         fontFamily: resolvedFontFamily,
         ...artRootPadding,
+        ...artThumbFit,
       }}
     >
       {/* Stamp in Top-Right */}
