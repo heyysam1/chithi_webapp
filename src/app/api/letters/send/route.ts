@@ -23,6 +23,11 @@ export async function POST(req: NextRequest) {
     // mailbox owner authenticating via Authorization: Bearer presents no
     // chithi_s_* cookie, so check the bearer token against the recipient's
     // access token hash as well.
+    // Thread replies are exempt: replying inside a thread in your own
+    // inbox is a core flow, and only the mailbox owner can present this
+    // token. sendLetter() still validates that the parent letter belongs
+    // to this mailbox and enforces the thread depth cap, so a bogus or
+    // foreign replyTo is rejected there.
     const recipientLower = input.recipient.toLowerCase();
     const allCookies = req.cookies.getAll();
     const selfCookie = allCookies.find((c) => {
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
       if (bearerToken) presentedTokens.push(bearerToken);
     }
 
-    if (presentedTokens.length > 0) {
+    if (presentedTokens.length > 0 && !input.replyTo) {
       const redis = getRedis();
       const rawRecipient = await redis.get<string | MailboxRecord>(keys.mailbox(recipientLower));
       if (rawRecipient) {
