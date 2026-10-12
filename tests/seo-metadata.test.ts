@@ -30,8 +30,12 @@ test("SEO-02: Public mailbox page has strict noindex/nofollow and no username in
     params: Promise.resolve({ username: "victim_alice" }),
   });
 
-  // Verify title does NOT leak the username or handle
-  assert.equal(meta.title, "Chithi", "Title must not leak username or handle in page title");
+  // Verify title does NOT leak the username or handle (unified site title)
+  assert.deepEqual(
+    meta.title,
+    { absolute: "MyChithi - Anonymous Private Letters" },
+    "Title must be the unified site title and must not leak username or handle"
+  );
   assert.ok(!JSON.stringify(meta).includes("victim_alice"), "Metadata must never leak username");
 
   // Verify robots directives

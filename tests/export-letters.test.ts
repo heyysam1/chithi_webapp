@@ -16,6 +16,8 @@ const PAPER_NAMES = {
   rose: "Paper Rose",
   typewriter: "Paper Typewriter",
   rainy: "Paper Rain",
+  starry: "Starry Night",
+  blossom: "Blossom",
 } as const;
 
 const STAMP_NAMES = {
