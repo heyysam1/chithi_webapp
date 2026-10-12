@@ -193,6 +193,8 @@ export const en = {
     createOwn: "Create your own mailbox",
     scheduledTitle: "Your letter is scheduled",
     scheduledDesc: "It will be delivered on {date}.",
+    replyTitle: "Your reply is on its way",
+    backToInbox: "Back to inbox",
   },
   draft: {
     title: "You have an unsent draft",
