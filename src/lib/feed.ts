@@ -72,6 +72,7 @@ local feedRecord = {
   body = letter.body,
   paper = letter.paper,
   stamp = letter.stamp,
+  font = letter.font,
   createdAt = tonumber(ARGV[2]),
   hearts = 0,
   heartCracks = 0,

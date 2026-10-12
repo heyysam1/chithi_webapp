@@ -231,6 +231,9 @@ export const en = {
     actionReply: "Reply",
     threadTitle: "Reply thread",
     threadYouAreHere: "You are here",
+    pageOf: "Page {current} of {total}",
+    prevPage: "Previous",
+    nextPage: "Next",
     reactionNotice: "Your reaction is kept privately with the letter.",
     fromSender: "From:",
     anonymousSender: "Anonymous",
@@ -287,6 +290,11 @@ export const en = {
     watermark: "Chithi · চিঠি",
     failed: "Failed to render postcard. Please try again.",
     saved: "Postcard saved successfully",
+  },
+  story: {
+    downloading: "Rendering story image...",
+    failed: "Failed to render story image. Please try again.",
+    saved: "Story image saved",
   },
   recover: {
     title: "Recover Mailbox",
@@ -351,6 +359,8 @@ export const en = {
     rose: "Paper Rose",
     typewriter: "Paper Typewriter",
     rainy: "Paper Rain",
+    starry: "Starry Night",
+    blossom: "Blossom",
   },
   papers: {
     parchment: "Paper Parchment",
@@ -358,6 +368,8 @@ export const en = {
     rose: "Paper Rose",
     typewriter: "Paper Typewriter",
     rainy: "Paper Rain",
+    starry: "Starry Night",
+    blossom: "Blossom",
   },
   stamps: {
     wax: "Crimson Wax",
@@ -454,6 +466,8 @@ export const en = {
     },
     publicUrl: {
       title: "Your Public Letter Link",
+      storyButton: "Download story image",
+      storyHint: "A ready-made 1080×1920 image for your Facebook or Instagram story.",
     },
     actions: {
       openInbox: "Open Secret Inbox",

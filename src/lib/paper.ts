@@ -241,6 +241,22 @@ export const PAPERS: Record<PaperStyleId, PaperDefinition> = {
     baseColor: PAPER_COLORS.rainy.base,
     previewSwatch: "bg-skymist border-skymist-edge",
   },
+  starry: {
+    id: "starry",
+    labelKey: "papers.starry",
+    defaultFont: "dearSecret",
+    inkColor: PAPER_COLORS.starry.ink,
+    baseColor: PAPER_COLORS.starry.base,
+    previewSwatch: "bg-surface border-edge",
+  },
+  blossom: {
+    id: "blossom",
+    labelKey: "papers.blossom",
+    defaultFont: "heartfelt",
+    inkColor: PAPER_COLORS.blossom.ink,
+    baseColor: PAPER_COLORS.blossom.base,
+    previewSwatch: "bg-lavender-surface border-lavender-edge",
+  },
 };
 
 export interface StampDefinition {

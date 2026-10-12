@@ -82,9 +82,26 @@ const PaperStyleEnum = z.enum([
   "rose",
   "typewriter",
   "rainy",
+  "starry",
+  "blossom",
 ]);
 
 const StampEnum = z.enum(["wax", "topSecret", "memory", "heartbreak"]);
+
+const FontEnum = z.enum([
+  "dearSecret",
+  "heartfelt",
+  "untoldTale",
+  "bnCursive",
+  "bnDiary",
+  "bnScribble",
+  "bnTypewriter",
+  "bnSerif",
+  "handwriting1",
+  "handwriting2",
+  "handwriting3",
+  "typewriter",
+]);
 
 export const SendLetterSchema = z
   .object({
@@ -95,6 +112,7 @@ export const SendLetterSchema = z
       .max(LETTER_BODY_MAX, "errors.validation.bodyTooLong"),
     paper: PaperStyleEnum,
     stamp: StampEnum,
+    font: FontEnum.optional(),
     hints: z
       .array(z.string().min(1).max(HINT_MAX_LEN))
       .max(HINT_MAX_COUNT)
@@ -148,6 +166,7 @@ export const SendBottleSchema = z
       .max(LETTER_BODY_MAX, "errors.validation.bodyTooLong"),
     paper: PaperStyleEnum,
     stamp: StampEnum,
+    font: FontEnum.optional(),
     hints: z
       .array(z.string().min(1).max(HINT_MAX_LEN))
       .max(HINT_MAX_COUNT)

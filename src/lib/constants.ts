@@ -17,6 +17,7 @@ export const RESERVED_USERNAMES = [
   "icon",
   "favicon",
   "opengraph-image",
+  "paper-art",
   "textures",
   "fonts",
   "og",

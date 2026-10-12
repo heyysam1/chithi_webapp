@@ -5,6 +5,7 @@ import {
   MailboxRecord,
   PaperStyleId,
   StampId,
+  FontId,
   OpenLetter,
   LetterView,
 } from "./types";
@@ -247,6 +248,7 @@ export async function sendLetter(
     body: cleanBody,
     paper: input.paper as PaperStyleId,
     stamp: input.stamp as StampId,
+    font: input.font as FontId | undefined,
     hints: cleanHints,
     source: "direct",
     createdAt: now,
@@ -417,6 +419,7 @@ export async function getLetter(
     body: updatedLetter.body,
     paper: updatedLetter.paper,
     stamp: updatedLetter.stamp,
+    font: updatedLetter.font,
     hints: updatedLetter.hints,
     source: updatedLetter.source,
     createdAt: updatedLetter.createdAt,

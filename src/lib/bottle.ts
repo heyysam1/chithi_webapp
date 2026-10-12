@@ -1,5 +1,5 @@
 import { SendBottleInput } from "./schemas";
-import { MailboxRecord, LetterRecord, PaperStyleId, StampId } from "./types";
+import { MailboxRecord, LetterRecord, PaperStyleId, StampId, FontId } from "./types";
 import { MAILBOX_LETTER_CAP } from "./constants";
 import { keys } from "./keys";
 import { getRedis } from "./redis";
@@ -127,6 +127,7 @@ export async function sendBottle(
       body: cleanBody,
       paper: input.paper as PaperStyleId,
       stamp: input.stamp as StampId,
+      font: input.font as FontId | undefined,
       hints: cleanHints,
       source: "bottle",
       createdAt: now,

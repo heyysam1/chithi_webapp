@@ -11,7 +11,9 @@ export type PaperStyleId =
   | "midnight"
   | "rose"
   | "typewriter"
-  | "rainy";
+  | "rainy"
+  | "starry"
+  | "blossom";
 
 export type StampId = "wax" | "topSecret" | "memory" | "heartbreak";
 
@@ -69,6 +71,8 @@ export interface LetterRecord {
   body: string;
   paper: PaperStyleId;
   stamp: StampId;
+  /** Sender-chosen font. Optional: letters stored before this field existed have none (paper default applies). */
+  font?: FontId;
   hints: string[];
   source: "direct" | "bottle";
   createdAt: number;
@@ -91,6 +95,8 @@ export interface FeedRecord {
   body: string;
   paper: PaperStyleId;
   stamp: StampId;
+  /** Sender-chosen font, copied from the source letter on publish. */
+  font?: FontId;
   createdAt: number;
   hearts: number;
   heartCracks: number;
@@ -125,6 +131,8 @@ export interface OpenLetter {
   body: string;
   paper: PaperStyleId;
   stamp: StampId;
+  /** Sender-chosen font, if the stored letter carries one. */
+  font?: FontId;
   hints: string[];
   source: "direct" | "bottle";
   createdAt: number;

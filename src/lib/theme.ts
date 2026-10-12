@@ -163,4 +163,14 @@ export const PAPER_COLORS = {
     base: "#202730",
     edge: "#E0F2FE",
   },
+  starry: {
+    ink: "#2E2A55",
+    base: "#F3EDDC",
+    edge: "#DDD3B8",
+  },
+  blossom: {
+    ink: "#5B2333",
+    base: "#FBF1EC",
+    edge: "#F3D9D2",
+  },
 } as const;
