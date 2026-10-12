@@ -49,9 +49,17 @@ export function PaperSurface({
   // by inline padding on the content wrapper, and the root gets deep
   // vertical padding, deepest at the bottom where the darkest art sits.
   const isIllustrated = paper === "starry" || paper === "blossom";
+  // The percentages resolve against the surface WIDTH, so on wide
+  // desktop composers uncapped values ballooned the paper's height
+  // (about +210px at 870px wide). Clamp caps keep the writing band
+  // clear of the artwork while holding the height close to the plain
+  // papers on every screen size.
   const artRootPadding =
     isIllustrated && (variant === "composer" || variant === "reader")
-      ? { paddingTop: "15%", paddingBottom: "26%" }
+      ? {
+          paddingTop: "clamp(36px, 9%, 72px)",
+          paddingBottom: "clamp(48px, 14%, 112px)",
+        }
       : isIllustrated && variant === "postcard"
         ? { paddingTop: "16%", paddingBottom: "22%" }
         : isIllustrated && variant === "thumb"

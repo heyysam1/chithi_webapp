@@ -40,7 +40,7 @@ export function LetterComposer({
   const { locale, t } = useLocale();
   const { showToast } = useToast();
 
-  const [paper, setPaper] = useState<PaperStyleId>("parchment");
+  const [paper, setPaper] = useState<PaperStyleId>("typewriter");
   const [stamp, setStamp] = useState<StampId>("wax");
   const [font, setFont] = useState<FontId>("handwriting1");
   const [body, setBody] = useState("");
