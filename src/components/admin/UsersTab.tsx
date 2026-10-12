@@ -171,7 +171,7 @@ export function UsersTab() {
                           {i + 1}
                         </td>
                         <td className="py-2.5 pr-4">
-                          <span className="font-mono text-ink">
+                          <span className="font-username text-[15px] text-ink">
                             @{m.username}
                           </span>
                           {m.isPermanent && (

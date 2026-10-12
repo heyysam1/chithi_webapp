@@ -107,7 +107,7 @@ export function AdminShell({ username, onLogout, tabs }: AdminShellProps) {
             <p className="font-serif font-bold text-ink leading-tight truncate">
               {t("admin.shell.title")}
             </p>
-            <p className="text-[11px] font-mono text-ink-muted truncate">
+            <p className="text-[13px] font-username text-ink-muted truncate">
               @{username}
             </p>
           </div>

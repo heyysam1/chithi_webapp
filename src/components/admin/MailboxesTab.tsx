@@ -224,7 +224,7 @@ export function MailboxesTab() {
                       className="border-b border-edge/60 last:border-0 cursor-pointer hover:bg-peach/20 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:bg-peach/20"
                     >
                       <td className="px-4 py-3">
-                        <span className="font-mono font-medium text-ink">@{m.username}</span>
+                        <span className="font-username text-[15px] text-ink">@{m.username}</span>
                         {m.isPermanent && (
                           <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-wax/15 text-wax border border-wax/30">
                             <ShieldCheck size={11} />

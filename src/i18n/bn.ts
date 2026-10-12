@@ -234,6 +234,9 @@ export const bn: Dict = {
     actionReply: "উত্তর দিন",
     threadTitle: "উত্তরের ধারা",
     threadYouAreHere: "আপনি এখানে",
+    pageOf: "পৃষ্ঠা {current} / {total}",
+    prevPage: "আগের পৃষ্ঠা",
+    nextPage: "পরের পৃষ্ঠা",
     fromSender: "প্রেরক:",
     anonymousSender: "বেনামী প্রেরক",
     cancel: "বাতিল",
@@ -289,6 +292,11 @@ export const bn: Dict = {
     watermark: "Chithi · চিঠি",
     failed: "পোস্টকার্ড তৈরি করা যায়নি। আবার চেষ্টা করুন।",
     saved: "পোস্টকার্ড সফলভাবে সংরক্ষণ করা হয়েছে",
+  },
+  story: {
+    downloading: "Story image তৈরি হচ্ছে...",
+    failed: "Story image তৈরি করা যায়নি। আবার চেষ্টা করুন।",
+    saved: "Story image সেভ হয়েছে",
   },
   recover: {
     title: "ইনবক্সে ঢুকুন",
@@ -353,6 +361,8 @@ export const bn: Dict = {
     rose: "গোলাপের পাপড়ি",
     typewriter: "নোটবই খাতা",
     rainy: "বৃষ্টিভেজা কাচ",
+    starry: "তারা ভরা রাত",
+    blossom: "ফুলের বাগান",
   },
   papers: {
     parchment: "পুরনো কাগজ",
@@ -360,6 +370,8 @@ export const bn: Dict = {
     rose: "গোলাপের পাপড়ি",
     typewriter: "নোটবই খাতা",
     rainy: "বৃষ্টিভেজা কাচ",
+    starry: "তারা ভরা রাত",
+    blossom: "ফুলের বাগান",
   },
   stamps: {
     wax: "লাল গালা",
@@ -456,6 +468,8 @@ export const bn: Dict = {
     },
     publicUrl: {
       title: "চিঠি পাওয়ার পাবলিক লিঙ্ক",
+      storyButton: "Story image ডাউনলোড করুন",
+      storyHint: "Facebook বা Instagram story-র জন্য তৈরি 1080×1920 ছবি।",
     },
     actions: {
       openInbox: "ইনবক্সে ঢুকুন",
