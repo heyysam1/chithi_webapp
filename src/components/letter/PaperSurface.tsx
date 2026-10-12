@@ -15,6 +15,9 @@ export interface PaperSurfaceProps {
   variant?: "composer" | "reader" | "postcard" | "thumb";
   className?: string;
   watermark?: boolean;
+  /** Left side of the postcard footer (e.g. "@username" or "Benami Kham").
+   * The right side always carries the site name. Kept small and subtle. */
+  footerLabel?: string;
   isEditable?: boolean;
   value?: string;
   onChange?: (val: string) => void;
@@ -30,6 +33,7 @@ export function PaperSurface({
   variant = "reader",
   className = "",
   watermark = false,
+  footerLabel,
   isEditable = false,
   value = "",
   onChange,
@@ -39,6 +43,25 @@ export function PaperSurface({
   const activeFontId = font || def.defaultFont;
   const activeFontDef = FONTS[activeFontId] || FONTS.handwriting1;
   const rotation = getDeterministicRotation(stampSeed);
+  // Illustrated papers (starry, blossom) carry artwork around the edges
+  // with a blank centre. The writing band is inset on every side so text
+  // stays over the blank area: side art (cypress, flower stems) is cleared
+  // by inline padding on the content wrapper, and the root gets deep
+  // vertical padding, deepest at the bottom where the darkest art sits.
+  const isIllustrated = paper === "starry" || paper === "blossom";
+  const artRootPadding =
+    isIllustrated && (variant === "composer" || variant === "reader")
+      ? { paddingTop: "15%", paddingBottom: "26%" }
+      : isIllustrated && variant === "postcard"
+        ? { paddingTop: "16%", paddingBottom: "22%" }
+        : {};
+  const artInlineInset = isIllustrated
+    ? {
+        paddingLeft: "11%",
+        // Keep clearing the corner stamp as well as the side artwork.
+        paddingRight: stamp ? "max(11%, 5rem)" : "11%",
+      }
+    : {};
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -69,6 +92,7 @@ export function PaperSurface({
       className={`relative paper-${paper} ${variantStyles[variant]} transition-all duration-300 select-text ${className}`}
       style={{
         fontFamily: resolvedFontFamily,
+        ...artRootPadding,
       }}
     >
       {/* Stamp in Top-Right */}
@@ -125,7 +149,10 @@ export function PaperSurface({
       )}
 
       {/* Direct-On-Paper Interactive Writing Area or Static Render */}
-      <div className={`relative z-0 text-[1.125rem] ${lineHeightClass} ${stamp ? "pr-16 sm:pr-20" : ""}`}>
+      <div
+        className={`relative z-0 text-[1.125rem] ${lineHeightClass} ${stamp ? "pr-16 sm:pr-20" : ""}`}
+        style={artInlineInset}
+      >
         {isEditable ? (
           <textarea
             ref={textareaRef}
@@ -145,11 +172,41 @@ export function PaperSurface({
         )}
       </div>
 
-      {/* Postcard Watermark rule */}
+      {/* Postcard footer: owner's handle on the left, site name on the
+          right. Deliberately small and quiet so it never bothers the
+          reader of the letter itself. */}
       {watermark && (
-        <div className="mt-auto pt-6 border-t border-current/20 flex items-center justify-between text-xs font-accent tracking-widest uppercase opacity-70">
-          <span>Chithi · চিঠি</span>
-          <span>Anonymous Ephemeral</span>
+        <div
+          className="mt-auto pt-5 border-t flex items-center justify-between"
+          style={{
+            // On the starry postcard the footer lands on the dark village
+            // band of the artwork, so it renders in the paper's own cream
+            // base color to stay readable.
+            color: paper === "starry" ? PAPERS.starry.baseColor : undefined,
+            borderColor: "rgba(128, 110, 80, 0.25)",
+            opacity: paper === "starry" ? 0.85 : 0.6,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-username), 'Courgette', cursive",
+              fontSize: 15,
+              lineHeight: 1,
+            }}
+          >
+            {footerLabel ?? ""}
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-display), Georgia, serif",
+              fontWeight: 600,
+              fontSize: 12,
+              letterSpacing: "0.01em",
+              lineHeight: 1,
+            }}
+          >
+            MyChithi
+          </span>
         </div>
       )}
     </div>

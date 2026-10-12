@@ -66,6 +66,8 @@ export function InboxExportButton({
           rose: t("papers.rose"),
           typewriter: t("papers.typewriter"),
           rainy: t("papers.rainy"),
+          starry: t("papers.starry"),
+          blossom: t("papers.blossom"),
         },
         stamps: {
           wax: t("stamps.wax"),

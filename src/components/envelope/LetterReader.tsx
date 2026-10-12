@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { X, Heart, HeartCrack, Share2, Download, Trash2, Flag, User, EyeOff } from "lucide-react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { X, Heart, HeartCrack, Share2, Download, Trash2, Flag, User, EyeOff, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 import { PaperSurface } from "../letter/PaperSurface";
+import { paginateLetterBody } from "@/lib/paginate";
 import { BurnTimer } from "./BurnTimer";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -48,6 +50,25 @@ export function LetterReader({
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [thread, setThread] = useState<LetterSummary[] | null>(null);
+
+  // Long letters are read page by page (like turning a paper sheet);
+  // short letters stay a single page and show no pager at all.
+  const pages = useMemo(
+    () => (letter ? paginateLetterBody(letter.body) : [""]),
+    [letter]
+  );
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageDirection, setPageDirection] = useState(0);
+  useEffect(() => {
+    setPageIndex(0);
+    setPageDirection(0);
+  }, [letter?.id, isOpen]);
+  const isLastPage = pageIndex >= pages.length - 1;
+  const goToPage = (next: number) => {
+    const clamped = Math.max(0, Math.min(pages.length - 1, next));
+    setPageDirection(clamped > pageIndex ? 1 : -1);
+    setPageIndex(clamped);
+  };
 
   // Load the reply thread when a letter is opened.
   useEffect(() => {
@@ -235,11 +256,12 @@ export function LetterReader({
             <PaperSurface
               paper={letter.paper}
               stamp={letter.stamp}
+              font={letter.font}
               stampSeed={letter.id}
               variant="reader"
             >
-              {/* Reply thread context (only when this letter is part of a thread) */}
-              {thread && thread.length > 1 && (
+              {/* Reply thread context (first page only) */}
+              {pageIndex === 0 && thread && thread.length > 1 && (
                 <div className="mb-6">
                   <ThreadView
                     thread={thread}
@@ -253,20 +275,26 @@ export function LetterReader({
                 </div>
               )}
 
-              {/* Body */}
-              <div className="whitespace-pre-wrap break-words min-h-[220px]">
-                {letter.body}
-              </div>
+              {/* Body: one page at a time, sliding like a turned sheet */}
+              <motion.div
+                key={pageIndex}
+                initial={{ opacity: 0, x: pageDirection >= 0 ? 36 : -36 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
+                className="whitespace-pre-wrap break-words min-h-[220px]"
+              >
+                {pages[pageIndex]}
+              </motion.div>
 
-              {/* Sender signature if named */}
-              {letter.senderName && (
+              {/* Sender signature if named (end of the letter) */}
+              {isLastPage && letter.senderName && (
                 <div className="mt-8 pt-4 text-right font-hand text-base font-bold opacity-90 italic">
                   — {letter.senderName}
                 </div>
               )}
 
-              {/* Hints */}
-              {letter.hints && letter.hints.length > 0 && (
+              {/* Hints (end of the letter) */}
+              {isLastPage && letter.hints && letter.hints.length > 0 && (
                 <div className="mt-10 pt-6 border-t border-current/20 space-y-2 text-xs opacity-80">
                   <span className="font-accent uppercase tracking-widest text-[11px] block font-semibold">
                     {t("reader.hintsTitle")}
@@ -280,6 +308,37 @@ export function LetterReader({
               )}
             </PaperSurface>
           </div>
+
+          {/* Page controls for long letters */}
+          {pages.length > 1 && (
+            <div className="flex items-center justify-between px-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => goToPage(pageIndex - 1)}
+                disabled={pageIndex === 0}
+                className="rounded-full gap-1"
+              >
+                <ChevronLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+                <span>{t("reader.prevPage")}</span>
+              </Button>
+              <span className="text-[11px] font-accent uppercase tracking-widest text-ink-muted">
+                {t("reader.pageOf", { current: pageIndex + 1, total: pages.length })}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => goToPage(pageIndex + 1)}
+                disabled={isLastPage}
+                className="rounded-full gap-1"
+              >
+                <span>{t("reader.nextPage")}</span>
+                <ChevronRight size={16} strokeWidth={1.5} aria-hidden="true" />
+              </Button>
+            </div>
+          )}
 
           {/* Action Bar Beneath Letter */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-surface border border-edge rounded-3xl shadow-[0_12px_32px_-8px_rgba(78,59,44,0.06)]">

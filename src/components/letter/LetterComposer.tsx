@@ -139,6 +139,17 @@ export function LetterComposer({
     setIsSelfSending(isOwner);
   }, [recipientUsername, isBottleMode, sessions]);
 
+  // When the mailbox owner is composing a thread reply, default to a named
+  // reply under their own username so the thread view can tell their
+  // messages apart from the anonymous sender's. (The reply only ever lives
+  // in their own mailbox, so this reveals nothing to anyone else.)
+  useEffect(() => {
+    if (replyToId && isSelfSending && recipientUsername) {
+      setIsAnonymous(false);
+      setSenderName((prev) => prev || recipientUsername);
+    }
+  }, [replyToId, isSelfSending, recipientUsername]);
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -193,6 +204,7 @@ export function LetterComposer({
             body,
             paper,
             stamp,
+            font,
             hints: cleanHints,
             target: bottleTarget,
             senderName: isAnonymous ? null : (senderName.trim() || null),
@@ -244,6 +256,7 @@ export function LetterComposer({
             body,
             paper,
             stamp,
+            font,
             hints: cleanHints,
             burnAfterReading: advancedState.burnAfterReading,
             senderName: isAnonymous ? null : (senderName.trim() || null),
@@ -274,7 +287,11 @@ export function LetterComposer({
     }
   };
 
-  if (isSelfSending && recipientUsername) {
+  // Thread replies are the exception to the self-send guard: the mailbox
+  // owner replying from their inbox lands here with ?replyTo=<id>, and the
+  // server validates the parent letter belongs to this mailbox. Blocking
+  // that path made the reader's Reply button a dead end.
+  if (isSelfSending && recipientUsername && !replyToId) {
     return (
       <div className="max-w-xl mx-auto p-8 sm:p-10 rounded-3xl bg-canvas dark:bg-surface border border-edge shadow-xl text-center space-y-5">
         <div className="w-16 h-16 rounded-full bg-peach/60 dark:bg-surface-raised text-wax flex items-center justify-center mx-auto shadow-inner">

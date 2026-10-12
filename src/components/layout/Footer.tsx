@@ -22,7 +22,7 @@ export function Footer() {
               className="w-full h-full object-contain"
             />
           </div>
-          <span className="font-serif font-bold text-ink dark:text-ink-heading">
+          <span className="font-display font-bold text-ink dark:text-ink-heading">
             Chithi
           </span>
           <span className="text-edge">·</span>

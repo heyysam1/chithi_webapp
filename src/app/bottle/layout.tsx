@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Message in a Bottle",
+  title: { absolute: "MyChithi - Anonymous Private Letters" },
   description:
     "Cast a message in a bottle - your anonymous letter drifts to a stranger's inbox. No signup, no tracking.",
   alternates: { canonical: "/bottle" },

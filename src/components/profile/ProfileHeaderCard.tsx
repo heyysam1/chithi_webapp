@@ -77,7 +77,7 @@ export function ProfileHeaderCard({
 
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-serif font-bold text-ink dark:text-ink-heading tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-username text-ink dark:text-ink-heading">
                 @{username}
               </h1>
 

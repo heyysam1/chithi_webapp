@@ -40,10 +40,10 @@ export function Header() {
             />
           </div>
           <div className="inline-flex items-baseline gap-1 sm:gap-1.5">
-            <span className="font-serif text-lg sm:text-3xl font-bold tracking-tight text-ink dark:text-ink-heading group-hover:text-wax transition-colors">
+            <span className="font-display text-lg sm:text-3xl font-bold tracking-tight text-ink dark:text-ink-heading group-hover:text-wax transition-colors">
               Chithi
             </span>
-            <span className="hidden xs:inline font-serif text-xs sm:text-base font-normal text-wax group-hover:text-wax-dim transition-colors">
+            <span className="hidden xs:inline font-display text-xs sm:text-base font-normal text-wax group-hover:text-wax-dim transition-colors">
               চিঠি
             </span>
           </div>
@@ -82,7 +82,7 @@ export function Header() {
                 <div className="w-5 h-5 rounded-full bg-wax text-[11px] font-serif font-bold text-white flex items-center justify-center shrink-0">
                   {activeUser.charAt(0).toUpperCase()}
                 </div>
-                <span className="font-mono text-ink dark:text-ink-heading font-semibold truncate max-w-[44px] xs:max-w-[70px] sm:max-w-[120px]">
+                <span className="font-username text-sm text-ink dark:text-ink-heading truncate max-w-[44px] xs:max-w-[70px] sm:max-w-[120px]">
                   @{activeUser}
                 </span>
                 {expiresAt > 0 && !countdown.isExpired && (

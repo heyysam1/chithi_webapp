@@ -7,6 +7,7 @@ import {
   Homemade_Apple,
   Courier_Prime,
   Special_Elite,
+  Courgette,
   Hind_Siliguri,
   Noto_Serif_Bengali,
 } from "next/font/google";
@@ -88,6 +89,16 @@ export const courierPrime = Courier_Prime({
   fallback: ["Hind Siliguri", "Noto Serif Bengali", "monospace"],
 });
 
+// Username identity font: Courgette (semi-calligraphic, ~40% flourish)
+export const courgette = Courgette({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-username",
+  display: "swap",
+  adjustFontFallback: true,
+  fallback: ["Hind Siliguri", "Noto Serif Bengali", "cursive"],
+});
+
 export const specialElite = Special_Elite({
   subsets: ["latin"],
   weight: ["400"],
@@ -119,4 +130,4 @@ export const bnHandwriting3 = localFont({
   fallback: ["Hind Siliguri", "Noto Serif Bengali", "cursive", "sans-serif"],
 });
 
-export const fontVariables = `${fraunces.variable} ${plusJakartaSans.variable} ${hindSiliguri.variable} ${notoSerifBengali.variable} ${caveat.variable} ${dancingScript.variable} ${homemadeApple.variable} ${courierPrime.variable} ${specialElite.variable} ${bnHandwriting1.variable} ${bnHandwriting2.variable} ${bnHandwriting3.variable}`;
+export const fontVariables = `${fraunces.variable} ${plusJakartaSans.variable} ${hindSiliguri.variable} ${notoSerifBengali.variable} ${caveat.variable} ${dancingScript.variable} ${homemadeApple.variable} ${courierPrime.variable} ${specialElite.variable} ${courgette.variable} ${bnHandwriting1.variable} ${bnHandwriting2.variable} ${bnHandwriting3.variable}`;

@@ -1,17 +1,30 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { LetterRecord, OpenLetter, FontId } from "@/lib/types";
+import { FontId, PaperStyleId, StampId } from "@/lib/types";
 import { PaperSurface } from "../letter/PaperSurface";
 import { PAPERS } from "@/lib/paper";
 
-export interface PostcardCanvasProps {
-  letter: LetterRecord | OpenLetter | null;
+/** Minimal letter shape the postcard renderer needs. Satisfied by
+ * LetterRecord, OpenLetter and FeedRecord alike. */
+export interface PostcardLetterLike {
+  id: string;
+  body: string;
+  paper: PaperStyleId;
+  stamp: StampId;
   font?: FontId;
-  canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export function PostcardCanvas({ letter, font, canvasRef }: PostcardCanvasProps) {
+export interface PostcardCanvasProps {
+  letter: PostcardLetterLike | null;
+  font?: FontId;
+  canvasRef: React.RefObject<HTMLDivElement | null>;
+  /** Left footer label on the postcard ("@username" for inbox letters,
+   * "Benami Kham" for feed letters). */
+  footerLabel?: string;
+}
+
+export function PostcardCanvas({ letter, font, canvasRef, footerLabel }: PostcardCanvasProps) {
   const textRef = useRef<HTMLDivElement>(null);
   const [fontSize, setFontSize] = useState(28);
 
@@ -64,10 +77,11 @@ export function PostcardCanvas({ letter, font, canvasRef }: PostcardCanvasProps)
         <PaperSurface
           paper={letter.paper}
           stamp={letter.stamp}
-          font={font}
+          font={font || letter.font}
           stampSeed={letter.id}
           variant="postcard"
           watermark={true}
+          footerLabel={footerLabel}
           className="w-full h-full p-12 flex flex-col justify-between"
         >
           {/* Main letter body with dynamic font-size fitting */}

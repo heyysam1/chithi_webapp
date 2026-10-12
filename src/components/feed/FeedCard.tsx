@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-import { Flag } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Flag, Download } from "lucide-react";
 import type { FeedItemWithViewer } from "@/lib/feed";
 import { PaperSurface } from "../letter/PaperSurface";
 import { ReactionButton } from "./ReactionButton";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
+import { PostcardCanvas } from "../postcard/PostcardCanvas";
+import { useDownloadPostcard } from "../postcard/useDownloadPostcard";
 import { formatRelativeTime } from "@/lib/time";
 import { useLocale } from "@/hooks/useLocale";
 
@@ -17,11 +19,30 @@ export interface FeedCardProps {
 }
 
 export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [localHearts, setLocalHearts] = useState(item.hearts);
   const [localCracks, setLocalCracks] = useState(item.heartCracks);
   const [hasReacted, setHasReacted] = useState(item.viewerHasReacted);
+
+  // Postcard export: the off-screen canvas mounts only while an export is
+  // requested; the effect fires after mount so the canvas ref is ready.
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const { download } = useDownloadPostcard(canvasRef);
+  const [exportRequested, setExportRequested] = useState(false);
+
+  useEffect(() => {
+    if (!exportRequested) return;
+    let cancelled = false;
+    (async () => {
+      await download(item);
+      if (!cancelled) setExportRequested(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportRequested]);
 
   const handleReactionClick = async (reaction: "heart" | "heartCrack") => {
     if (hasReacted) return;
@@ -66,6 +87,7 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
           <PaperSurface
             paper={item.paper}
             stamp={item.stamp}
+            font={item.font}
             stampSeed={item.id}
             variant="thumb"
             className="pb-8"
@@ -102,6 +124,14 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
               {formatRelativeTime(item.createdAt, locale)}
             </span>
             <IconButton
+              label={t("reader.actionPostcard")}
+              onClick={() => setExportRequested(true)}
+              size="sm"
+              variant="ghost"
+            >
+              <Download size={14} strokeWidth={1.5} />
+            </IconButton>
+            <IconButton
               label="Report"
               onClick={() => onReport(item.id)}
               size="sm"
@@ -119,6 +149,7 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
           <PaperSurface
             paper={item.paper}
             stamp={item.stamp}
+            font={item.font}
             stampSeed={item.id}
             variant="reader"
           >
@@ -142,20 +173,40 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
                 onClick={() => handleReactionClick("heartCrack")}
               />
             </div>
-            <IconButton
-              label="Report"
-              onClick={() => {
-                setIsModalOpen(false);
-                onReport(item.id);
-              }}
-              size="sm"
-              variant="ghost"
-            >
-              <Flag size={16} strokeWidth={1.25} />
-            </IconButton>
+            <div className="flex items-center gap-1">
+              <IconButton
+                label={t("reader.actionPostcard")}
+                onClick={() => setExportRequested(true)}
+                size="sm"
+                variant="ghost"
+              >
+                <Download size={16} strokeWidth={1.25} />
+              </IconButton>
+              <IconButton
+                label="Report"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  onReport(item.id);
+                }}
+                size="sm"
+                variant="ghost"
+              >
+                <Flag size={16} strokeWidth={1.25} />
+              </IconButton>
+            </div>
           </div>
         </div>
       </Modal>
+
+      {/* Off-screen postcard canvas, mounted only during an export.
+          Feed postcards carry "Benami Kham" instead of a username. */}
+      {exportRequested && (
+        <PostcardCanvas
+          letter={item}
+          canvasRef={canvasRef}
+          footerLabel="Benami Kham"
+        />
+      )}
     </>
   );
 }

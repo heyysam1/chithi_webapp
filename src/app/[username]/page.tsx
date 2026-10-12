@@ -15,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   await params;
   return {
-    title: "Chithi",
+    title: { absolute: "MyChithi - Anonymous Private Letters" },
     robots: {
       index: false,
       follow: false,
