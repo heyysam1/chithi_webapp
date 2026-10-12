@@ -195,6 +195,8 @@ export const bn: Dict = {
     createOwn: "নিজের জন্য একটি ডাকবাক্স খুলুন",
     scheduledTitle: "আপনার চিঠি নির্ধারিত হয়েছে",
     scheduledDesc: "এটি {date} তারিখে পৌঁছে যাবে।",
+    replyTitle: "আপনার উত্তরটি পাঠানো হয়েছে",
+    backToInbox: "ইনবক্সে ফিরে যান",
   },
   draft: {
     title: "আপনার একটি অসমাপ্ত খসড়া আছে",
