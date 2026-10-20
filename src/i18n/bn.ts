@@ -239,6 +239,7 @@ export const bn: Dict = {
     pageOf: "পৃষ্ঠা {current} / {total}",
     prevPage: "আগের পৃষ্ঠা",
     nextPage: "পরের পৃষ্ঠা",
+    idLabel: "চিঠির ID",
     fromSender: "প্রেরক:",
     anonymousSender: "বেনামী প্রেরক",
     cancel: "বাতিল",
@@ -287,6 +288,7 @@ export const bn: Dict = {
     emptyTitle: "এখনো কোনো চিঠি প্রকাশ হয়নি",
     loadMore: "আরও চিঠি পড়ুন",
     loading: "লোড হচ্ছে...",
+    idLabel: "ফিড ID",
   },
   postcard: {
     downloading: "১০৮০×১৯২০ পোস্টকার্ড তৈরি হচ্ছে...",
