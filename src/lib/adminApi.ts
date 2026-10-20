@@ -113,6 +113,23 @@ export interface MailboxListData {
   items: MailboxItem[];
 }
 
+/** Recent-letter metadata from GET /api/admin/mailbox/[username]. Never bodies. */
+export interface AdminRecentLetter {
+  id: string;
+  createdAt: number;
+  source: "direct" | "bottle";
+  lockKind: "none" | "capsule" | "riddle";
+  isOpened: boolean;
+  senderName: string | null;
+  burnAfterReading: boolean;
+  published: boolean;
+}
+
+export interface AdminMailboxDetailData {
+  letterCount: number;
+  recentLetters: AdminRecentLetter[];
+}
+
 export interface ReportItem {
   key: string;
   targetType: string;

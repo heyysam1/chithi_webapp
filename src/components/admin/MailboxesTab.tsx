@@ -14,6 +14,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useLocale } from "@/hooks/useLocale";
 import { useToast } from "@/hooks/useToast";
 import { adminFetch, AdminApiError } from "@/lib/adminApi";
+import { CopyIdButton } from "./CopyIdButton";
 
 export type MailboxesTabProps = Record<string, never>;
 
@@ -323,14 +324,15 @@ export function MailboxesTab() {
                   {detail.recentLetters.map((ltr) => (
                     <div
                       key={ltr.id}
-                      className="flex items-center justify-between px-3 py-2 rounded-xl bg-canvas dark:bg-black/20 border border-edge/60 text-xs"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-canvas dark:bg-black/20 border border-edge/60 text-xs"
                     >
-                      <span className="font-mono text-ink-muted truncate">{ltr.id}</span>
-                      <span className="text-ink-muted shrink-0 ml-2">
+                      <span className="font-mono text-ink break-all flex-1">{ltr.id}</span>
+                      <span className="text-ink-muted shrink-0">
                         {new Date(ltr.createdAt).toLocaleDateString(
                           locale === "bn" ? "bn-BD" : "en-US"
                         )}
                       </span>
+                      <CopyIdButton value={ltr.id} />
                     </div>
                   ))}
                 </div>

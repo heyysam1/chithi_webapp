@@ -64,6 +64,9 @@ export async function GET(
       source: "direct" | "bottle";
       lockKind: "none" | "capsule" | "riddle";
       isOpened: boolean;
+      senderName: string | null;
+      burnAfterReading: boolean;
+      published: boolean;
     }> = [];
 
     if (letterIds && letterIds.length > 0) {
@@ -87,6 +90,11 @@ export async function GET(
           source: letter.source,
           lockKind: letter.lock.kind,
           isOpened: letter.openedAt !== null,
+          // Sender display name exactly as the recipient sees it (null =
+          // anonymous). This identifies the letter without its body.
+          senderName: letter.senderName ?? null,
+          burnAfterReading: letter.burnAfterReading,
+          published: letter.published,
         });
       }
     }

@@ -13,6 +13,7 @@ import {
   type ReportsData,
   type ReportItem,
 } from "@/lib/adminApi";
+import { CopyIdButton } from "./CopyIdButton";
 
 type PendingAction = {
   item: ReportItem;
@@ -141,12 +142,22 @@ export function ReportsTab() {
                 >
                   {item.targetType}
                 </span>
-                <span className="font-mono text-xs text-ink-muted break-all">
-                  {item.targetId}
-                </span>
                 <span className="ml-auto text-xs text-ink-muted">
                   {t("admin.reports.reportCount")}:{" "}
                   <span className="font-bold text-ink">{item.count}</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-canvas border border-edge px-3 py-2">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-ink-muted">
+                  {item.targetType === "letter"
+                    ? t("admin.reports.idLabelLetter")
+                    : t("admin.reports.idLabelFeed")}
+                </span>
+                <span className="font-mono text-sm text-ink break-all">
+                  {item.targetId}
+                </span>
+                <span className="ml-auto">
+                  <CopyIdButton value={item.targetId} />
                 </span>
               </div>
               <div className="text-[11px] text-ink-muted">
