@@ -113,3 +113,14 @@ export async function checkAdminActionRateLimit(): Promise<boolean> {
   );
   return rl.success;
 }
+
+/**
+ * Interpret a stored "1"/"0" flag read through the @upstash/redis client.
+ * That client auto-deserializes JSON-looking values, so the stored string
+ * "1" arrives as the NUMBER 1 (and "0" as the number 0); a strict
+ * `val === "1"` comparison therefore never matches and the flag reads as
+ * permanently off. Accept both the string and number forms.
+ */
+export function redisFlagEnabled(val: unknown): boolean {
+  return val === "1" || val === 1;
+}

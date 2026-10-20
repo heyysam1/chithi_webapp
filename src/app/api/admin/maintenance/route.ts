@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiOk, apiErr, ApiError, parseJsonBody } from "@/lib/api";
-import { requireAdmin, AdminAuthError, checkAdminActionRateLimit } from "@/lib/admin";
+import { requireAdmin, AdminAuthError, checkAdminActionRateLimit, redisFlagEnabled } from "@/lib/admin";
 import { getRedis } from "@/lib/redis";
 import { keys } from "@/lib/keys";
 
@@ -37,8 +37,11 @@ export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
     const redis = getRedis();
-    const val = await redis.get<string>(keys.adminMaintenance());
-    return apiOk({ enabled: val === "1" });
+    const val = await redis.get(keys.adminMaintenance());
+    // redisFlagEnabled, not `val === "1"`: the Upstash client returns the
+    // stored "1" as the number 1 (auto-deserialization), so the strict
+    // string comparison always read the flag as off.
+    return apiOk({ enabled: redisFlagEnabled(val) });
   } catch (error) {
     if (error instanceof AdminAuthError) {
       return apiErr(error.code, adminErrorMessage(error.code), error.status);
