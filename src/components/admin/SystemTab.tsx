@@ -8,6 +8,7 @@ import {
   Trash2,
   Download,
   FileWarning,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -23,7 +24,10 @@ import {
   type SeriesData,
   type BanInfo,
   type BanListData,
+  type AdminMailboxDetailData,
+  type AdminRecentLetter,
 } from "@/lib/adminApi";
+import { CopyIdButton } from "./CopyIdButton";
 
 const CSV_DAYS = 30;
 
@@ -40,7 +44,7 @@ const TTL_OPTIONS = [
  * Every destructive action requires confirmation.
  */
 export function SystemTab() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { showToast } = useToast();
 
   // Maintenance
@@ -73,6 +77,45 @@ export function SystemTab() {
   const [letterId, setLetterId] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+
+  // Letter finder: look up a mailbox's recent letters (metadata + IDs)
+  const [finderUsername, setFinderUsername] = useState("");
+  const [finderBusy, setFinderBusy] = useState(false);
+  const [finderName, setFinderName] = useState<string | null>(null);
+  const [finderLetters, setFinderLetters] = useState<AdminRecentLetter[] | null>(null);
+  const [finderError, setFinderError] = useState<string | null>(null);
+
+  const loadFinder = useCallback(
+    async (name: string) => {
+      const data = await adminFetch<AdminMailboxDetailData>(
+        `/api/admin/mailbox/${encodeURIComponent(name)}`
+      );
+      setFinderLetters(data.recentLetters ?? []);
+      setFinderName(name);
+      setFinderError(null);
+    },
+    []
+  );
+
+  const handleFinderSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const name = finderUsername.trim();
+    if (!name) return;
+    setFinderBusy(true);
+    try {
+      await loadFinder(name);
+    } catch (err) {
+      setFinderLetters(null);
+      setFinderName(name);
+      setFinderError(
+        err instanceof AdminApiError && err.status === 404
+          ? t("admin.system.finderNotFound")
+          : t("admin.system.actionError")
+      );
+    } finally {
+      setFinderBusy(false);
+    }
+  };
 
   // CSV export
   const [csvBusy, setCsvBusy] = useState(false);
@@ -216,6 +259,10 @@ export function SystemTab() {
       });
       showToast(t("admin.system.deleteDone"), "success");
       setLetterId("");
+      // Keep the finder list truthful after a delete from either entry point.
+      if (finderName) {
+        loadFinder(finderName).catch(() => {});
+      }
     } catch (e) {
       showToast(
         e instanceof AdminApiError ? e.message : t("admin.system.actionError"),
@@ -473,6 +520,114 @@ export function SystemTab() {
           <Download size={14} strokeWidth={1.5} />
           {t("admin.system.csvSubmit")}
         </Button>
+      </div>
+
+      {/* Letter finder: find a letter's ID by recipient mailbox */}
+      <div className="p-4 sm:p-6 rounded-3xl bg-surface border border-edge shadow-sm space-y-4">
+        <h3 className="text-sm font-serif font-bold text-ink flex items-center gap-2">
+          <Search size={15} className="text-wax" strokeWidth={1.5} />
+          {t("admin.system.finderTitle")}
+        </h3>
+        <form
+          onSubmit={handleFinderSearch}
+          className="flex flex-col sm:flex-row gap-3"
+        >
+          <input
+            type="text"
+            value={finderUsername}
+            onChange={(e) => setFinderUsername(e.target.value)}
+            placeholder={t("admin.system.finderUsernamePh")}
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-canvas border border-edge text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-wax"
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            isLoading={finderBusy}
+            disabled={!finderUsername.trim()}
+            className="rounded-full"
+          >
+            {t("admin.system.finderSearch")}
+          </Button>
+        </form>
+        <p className="text-[11px] text-ink-muted leading-relaxed">
+          {t("admin.system.finderDesc")}
+        </p>
+        {finderError && (
+          <p role="alert" className="text-xs text-danger">
+            {finderError}
+          </p>
+        )}
+        {finderLetters !== null && !finderError && (
+          <div className="space-y-2">
+            <p className="text-[11px] text-ink-muted">
+              {t("admin.system.finderRecentNote")}
+            </p>
+            {finderLetters.length === 0 ? (
+              <p className="text-xs text-ink-muted">
+                {t("admin.system.finderEmpty")}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {finderLetters.map((ltr) => (
+                  <li
+                    key={ltr.id}
+                    className="p-3 rounded-2xl bg-canvas border border-edge space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[13px] text-ink break-all flex-1">
+                        {ltr.id}
+                      </span>
+                      <CopyIdButton value={ltr.id} />
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => {
+                          setLetterId(ltr.id);
+                          setDeleteConfirm(true);
+                        }}
+                        className="rounded-full shrink-0"
+                      >
+                        {t("admin.system.dangerSubmit")}
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
+                      <span>
+                        {new Date(ltr.createdAt).toLocaleString(
+                          locale === "bn" ? "bn-BD" : "en-US",
+                          { dateStyle: "medium", timeStyle: "short" }
+                        )}
+                      </span>
+                      <span>
+                        {ltr.source === "bottle"
+                          ? t("admin.system.sourceBottle")
+                          : t("admin.system.sourceDirect")}
+                      </span>
+                      <span>
+                        {t("admin.system.fromLabel")}:{" "}
+                        <span className="text-ink">
+                          {ltr.senderName ?? t("admin.system.fromAnonymous")}
+                        </span>
+                      </span>
+                      <span>
+                        {ltr.isOpened
+                          ? t("admin.system.statusOpened")
+                          : t("admin.system.statusUnopened")}
+                      </span>
+                      {ltr.burnAfterReading && (
+                        <span>{t("admin.system.statusBurn")}</span>
+                      )}
+                      {ltr.published && (
+                        <span>{t("admin.system.statusPublished")}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Danger zone: delete letter by ID */}
