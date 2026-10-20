@@ -128,13 +128,29 @@ async function isMaintenanceEnabled(): Promise<boolean> {
 // dots, so a generic dot-filter would skip real mailbox pages).
 const STATIC_PAGE_PATHS = new Set(["/sitemap.xml", "/robots.txt"]);
 
+/**
+ * The admin surface: the /admin page AND the /api/admin/* routes it talks
+ * to (login, session, the maintenance toggle itself). Maintenance mode must
+ * never block these, or turning maintenance on locks the owner out of the
+ * only switch that turns it off. Segment-exact matching so a mailbox page
+ * like /administrator is NOT exempt.
+ */
+export function isAdminSurface(pathname: string): boolean {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/api/admin" ||
+    pathname.startsWith("/api/admin/")
+  );
+}
+
 export function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
   // Maintenance mode: when the admin flag is set, everything except the
   // admin surface itself (/admin page + /api/admin/*) gets a 503 so the
   // owner can always reach the toggle to turn it back off.
-  if (!pathname.startsWith("/admin")) {
+  if (!isAdminSurface(pathname)) {
     return isMaintenanceEnabled().then((enabled) => {
       if (enabled) {
         return new NextResponse(
