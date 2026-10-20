@@ -236,6 +236,7 @@ export const en = {
     pageOf: "Page {current} of {total}",
     prevPage: "Previous",
     nextPage: "Next",
+    idLabel: "Letter ID",
     reactionNotice: "Your reaction is kept privately with the letter.",
     fromSender: "From:",
     anonymousSender: "Anonymous",
@@ -285,6 +286,7 @@ export const en = {
     emptyTitle: "No public letters yet",
     loadMore: "Read more letters",
     loading: "Unfolding letters...",
+    idLabel: "Feed ID",
   },
   postcard: {
     downloading: "Rendering 1080×1920 Postcard...",
