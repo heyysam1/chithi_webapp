@@ -192,6 +192,14 @@ export function FeedCard({ item, onReact, onReport }: FeedCardProps) {
               </IconButton>
             </div>
           </div>
+
+          {/* Feed ID, deliberately tiny and greyed into the corner:
+              just enough for a reader to quote it when reporting. */}
+          <div className="flex justify-end">
+            <span className="font-mono text-[10px] tracking-wide text-ink-muted/50 select-all">
+              {t("feed.idLabel")}: {item.id}
+            </span>
+          </div>
         </div>
       </Modal>
 

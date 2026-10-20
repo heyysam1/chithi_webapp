@@ -309,6 +309,14 @@ export function LetterReader({
             </PaperSurface>
           </div>
 
+          {/* Letter ID, deliberately tiny and greyed into the corner:
+              just enough for a reader to quote it when reporting. */}
+          <div className="flex justify-end px-1">
+            <span className="font-mono text-[10px] tracking-wide text-white/40 select-all">
+              {t("reader.idLabel")}: {letter.id}
+            </span>
+          </div>
+
           {/* Page controls for long letters */}
           {pages.length > 1 && (
             <div className="flex items-center justify-between px-1">
